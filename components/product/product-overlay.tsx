@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
+import { useCartStore } from "@/store/cart-store";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -15,6 +16,7 @@ import {
 
 export function ProductOverlay() {
   const { selectedProduct, setSelectedProduct, toggleCart } = useUIStore();
+  const { addItem } = useCartStore();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   // Reset size when product changes
@@ -37,8 +39,8 @@ export function ProductOverlay() {
   if (!selectedProduct) return null;
 
   const handleAddToCart = () => {
-    if (!selectedSize) return;
-    // Add to cart logic here (we'll implement cart store later)
+    if (!selectedSize || !selectedProduct) return;
+    addItem(selectedProduct, selectedSize);
     toggleCart();
     setSelectedProduct(null);
   };
