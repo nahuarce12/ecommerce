@@ -30,6 +30,11 @@ export default function RootLayout({
       >
         {children}
         <CartSheet />
+        <script
+          src="https://upload-widget.cloudinary.com/global/all.js"
+          type="text/javascript"
+          async
+        />
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +15,13 @@ interface AccountClientProps {
 
 export function AccountClient({ user, profile }: AccountClientProps) {
   const router = useRouter();
+  const isAdmin = profile?.role === "admin";
+
+  useEffect(() => {
+    if (isAdmin) {
+      router.push("/admin/dashboard");
+    }
+  }, [isAdmin, router]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -22,7 +30,9 @@ export function AccountClient({ user, profile }: AccountClientProps) {
     router.refresh();
   };
 
-  const isAdmin = profile?.role === "admin";
+  if (isAdmin) {
+    return null; // Don't render anything while redirecting
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -60,28 +70,7 @@ export function AccountClient({ user, profile }: AccountClientProps) {
               </div>
             </div>
 
-            {isAdmin && (
-              <>
-                <Separator />
-                <div>
-                  <h2 className="text-sm font-bold uppercase mb-4">Admin Tools</h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" className="uppercase text-xs">
-                      Manage Products
-                    </Button>
-                    <Button variant="outline" className="uppercase text-xs">
-                      View Orders
-                    </Button>
-                    <Button variant="outline" className="uppercase text-xs">
-                      Manage Users
-                    </Button>
-                    <Button variant="outline" className="uppercase text-xs">
-                      Analytics
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
+            
 
             <Separator />
 
