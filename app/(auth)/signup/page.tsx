@@ -35,8 +35,7 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/");
-      router.refresh();
+      router.push("/login?registered=true");
     }
   };
 
