@@ -8,10 +8,17 @@ import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { ShoppingBag, User as UserIcon } from "lucide-react";
 
+type Filter = "NEW" | "CLOTHES" | "ACCESSORIES" | "ORDERS";
+
 export function Header() {
-  const { toggleCart } = useUIStore();
-  const itemCount = useCartStore((state) => state.getItemCount());
+  const { toggleCart, selectedFilter, setSelectedFilter } = useUIStore();
   const [user, setUser] = useState<User | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const itemCount = useCartStore((state) => state.getItemCount());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -29,41 +36,51 @@ export function Header() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleFilterClick = (filter: Filter) => {
+    if (filter === "ORDERS") {
+      window.location.href = "/orders";
+    } else {
+      setSelectedFilter(filter);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
-          <Link href="/" className="font-bold text-lg tracking-tighter">
+          <Link href="/" className="font-bold text-sm md:text-lg tracking-tighter">
             SUPPLY
           </Link>
         </div>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link href="/remeras" className="hover:underline underline-offset-4">
-            REMERAS
-          </Link>
-          <Link href="/buzos" className="hover:underline underline-offset-4">
-            BUZOS
-          </Link>
-          <Link href="/pantalones" className="hover:underline underline-offset-4">
-            PANTALONES
-          </Link>
-          <Link href="/accesorios" className="hover:underline underline-offset-4">
-            ACCESORIOS
-          </Link>
+        {/* Navigation Filters */}
+        <nav className="flex items-center gap-4 md:gap-8 text-xs md:text-sm font-medium overflow-x-auto">
+          {(["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"] as Filter[]).map((filter) => (
+            <button
+              key={filter}
+              onClick={() => handleFilterClick(filter)}
+              className={`uppercase tracking-wide transition-colors hover:text-foreground whitespace-nowrap ${
+                selectedFilter === filter ? "text-foreground font-bold" : "text-muted-foreground"
+              }`}
+            >
+              {filter === "ACCESSORIES" ? "ACCESS." : filter}
+            </button>
+          ))}
         </nav>
-        <div className="flex items-center gap-4">
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-3 md:gap-4">
           {user ? (
             <Link href="/account" className="flex items-center gap-2 hover:opacity-70">
-              <UserIcon className="h-5 w-5" />
+              <UserIcon className="h-4 w-4 md:h-5 md:w-5" />
             </Link>
           ) : (
-            <Link href="/login" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="/login" className="text-xs md:text-sm font-medium hover:underline underline-offset-4">
               LOGIN
             </Link>
           )}
           <button onClick={toggleCart} className="flex items-center gap-2 hover:opacity-70">
-            <ShoppingBag className="h-5 w-5" />
-            <span className="text-sm font-medium">{itemCount}</span>
+            <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
+            {mounted && <span className="text-xs md:text-sm font-medium">{itemCount}</span>}
           </button>
         </div>
       </div>

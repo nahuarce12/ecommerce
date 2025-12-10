@@ -16,7 +16,7 @@ export function ProductCard({ product }: ProductCardProps) {
       className="group cursor-pointer bg-white flex flex-col"
       onClick={() => setSelectedProduct(product)}
     >
-      <div className="relative aspect-square w-full bg-white flex items-center justify-center p-8 overflow-hidden">
+      <div className="relative aspect-square w-full bg-white flex items-center justify-center p-4 md:p-8 overflow-hidden">
         <div className="relative w-full h-full">
           <Image
             src={product.images[0]}
@@ -27,8 +27,8 @@ export function ProductCard({ product }: ProductCardProps) {
           />
         </div>
       </div>
-      <div className="p-4 text-center bg-white">
-        <h3 className="text-xs font-medium uppercase tracking-wide">{product.name}</h3>
+      <div className="p-2 md:p-4 text-center bg-white">
+        <h3 className="text-[10px] md:text-xs font-medium uppercase tracking-wide">{product.name}</h3>
       </div>
     </div>
   );
