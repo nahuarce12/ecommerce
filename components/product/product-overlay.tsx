@@ -44,13 +44,16 @@ export function ProductOverlay() {
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {selectedProduct && (
         <motion.div
           initial={{ opacity: 0, y: "100%" }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: "100%" }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          transition={{ 
+            duration: 0.4,
+            ease: [0.22, 1, 0.36, 1]
+          }}
           className="fixed inset-0 z-50 bg-background flex flex-col md:flex-row"
         >
           {/* Close Button */}
