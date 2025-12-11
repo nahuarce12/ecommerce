@@ -8,16 +8,16 @@ export function Footer() {
           © 2025 ECOMMERCE CHINA. ALL RIGHTS RESERVED.
         </p>
         <nav className="flex gap-3 md:gap-4 text-[10px] md:text-xs font-medium">
-          <Link href="#" className="hover:underline underline-offset-4">
+          <Link href="/contact" className="hover:underline underline-offset-4">
             CONTACT
           </Link>
-          <Link href="#" className="hover:underline underline-offset-4">
+          <Link href="/terms" className="hover:underline underline-offset-4">
             TERMS
           </Link>
-          <Link href="#" className="hover:underline underline-offset-4">
+          <Link href="/privacy" className="hover:underline underline-offset-4">
             PRIVACY
           </Link>
-          <Link href="#" className="hover:underline underline-offset-4 hidden md:inline">
+          <Link href="/accessibility" className="hover:underline underline-offset-4 hidden md:inline">
             ACCESSIBILITY
           </Link>
         </nav>
