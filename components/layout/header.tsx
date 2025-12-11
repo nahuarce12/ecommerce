@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useUIStore } from "@/store/ui-store";
 import { useCartStore } from "@/store/cart-store";
 import { createClient } from "@/lib/supabase/client";
@@ -11,10 +12,12 @@ import { ShoppingBag, User as UserIcon } from "lucide-react";
 type Filter = "NEW" | "CLOTHES" | "ACCESSORIES" | "ORDERS";
 
 export function Header() {
+  const pathname = usePathname();
   const { toggleCart, selectedFilter, setSelectedFilter } = useUIStore();
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
   const itemCount = useCartStore((state) => state.getItemCount());
+  const isOrdersPage = pathname === "/orders";
 
   useEffect(() => {
     setMounted(true);
@@ -40,6 +43,10 @@ export function Header() {
     if (filter === "ORDERS") {
       window.location.href = "/orders";
     } else {
+      // Redirect to home and set filter
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
       setSelectedFilter(filter);
     }
   };
@@ -54,17 +61,20 @@ export function Header() {
         </div>
         {/* Navigation Filters */}
         <nav className="flex items-center gap-4 md:gap-8 text-xs md:text-sm font-medium overflow-x-auto">
-          {(["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"] as Filter[]).map((filter) => (
-            <button
-              key={filter}
-              onClick={() => handleFilterClick(filter)}
-              className={`uppercase tracking-wide transition-colors hover:text-foreground whitespace-nowrap ${
-                selectedFilter === filter ? "text-foreground font-bold" : "text-muted-foreground"
-              }`}
-            >
-              {filter === "ACCESSORIES" ? "ACCESS." : filter}
-            </button>
-          ))}
+          {(["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"] as Filter[]).map((filter) => {
+            const isActive = filter === "ORDERS" ? isOrdersPage : selectedFilter === filter && !isOrdersPage;
+            return (
+              <button
+                key={filter}
+                onClick={() => handleFilterClick(filter)}
+                className={`uppercase tracking-wide transition-colors hover:text-foreground whitespace-nowrap ${
+                  isActive ? "text-foreground font-bold" : "text-muted-foreground"
+                }`}
+              >
+                {filter === "ACCESSORIES" ? "ACCESS." : filter}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Right Actions */}
