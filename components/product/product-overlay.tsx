@@ -18,11 +18,27 @@ export function ProductOverlay() {
   const { selectedProduct, setSelectedProduct, toggleCart } = useUIStore();
   const { addItem } = useCartStore();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Reset size when product changes
+  // Reset size and image index when product changes
   useEffect(() => {
     setSelectedSize(null);
+    setCurrentImageIndex(0);
   }, [selectedProduct]);
+
+  const handlePrevImage = () => {
+    if (!selectedProduct) return;
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? selectedProduct.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    if (!selectedProduct) return;
+    setCurrentImageIndex((prev) => 
+      prev === selectedProduct.images.length - 1 ? 0 : prev + 1
+    );
+  };
 
   // Lock body scroll when overlay is open
   useEffect(() => {
@@ -69,7 +85,7 @@ export function ProductOverlay() {
             <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8">
               <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
                 <Image
-                  src={selectedProduct.images[0]}
+                  src={selectedProduct.images[currentImageIndex] || selectedProduct.images[0]}
                   alt={selectedProduct.name}
                   fill
                   className="object-contain"
@@ -78,13 +94,35 @@ export function ProductOverlay() {
               </div>
             </div>
             
-            {/* Navigation Arrows (Mock) - Hidden on mobile */}
-            <button className="hidden md:block absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/50">
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button className="hidden md:block absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/50">
-              <ChevronRight className="h-6 w-6" />
-            </button>
+            {/* Navigation Arrows - Show only if multiple images */}
+            {selectedProduct.images.length > 1 && (
+              <>
+                <button 
+                  onClick={handlePrevImage}
+                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background"
+                >
+                  <ChevronLeft className="h-4 w-4 md:h-6 md:w-6" />
+                </button>
+                <button 
+                  onClick={handleNextImage}
+                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background"
+                >
+                  <ChevronRight className="h-4 w-4 md:h-6 md:w-6" />
+                </button>
+                {/* Image indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {selectedProduct.images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`h-2 w-2 transition-colors ${
+                        index === currentImageIndex ? 'bg-foreground' : 'bg-foreground/30'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Details Section */}

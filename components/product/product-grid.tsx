@@ -9,7 +9,12 @@ interface ProductGridProps {
 
 export function ProductGrid({ products }: ProductGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-0 bg-white">
+    /* 🎨 CUSTOMIZE GRID SIZE HERE: 
+       - Change grid-cols-X to adjust columns (current: 3-4 columns on desktop)
+       - Change gap-X to adjust spacing between cards
+       - Current setup makes cards smaller/more compact
+    */
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 bg-white">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}

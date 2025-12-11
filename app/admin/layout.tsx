@@ -8,6 +8,7 @@ import {
   ShoppingCart, 
   Users 
 } from "lucide-react";
+import { AdminLogoutButton } from "@/components/admin/admin-logout-button";
 
 export default async function AdminLayout({
   children,
@@ -63,12 +64,15 @@ export default async function AdminLayout({
               ))}
             </nav>
           </div>
-          <Link
-            href="/"
-            className="text-sm font-medium uppercase tracking-wide hover:underline underline-offset-4"
-          >
-            Back to Store
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="text-sm font-medium uppercase tracking-wide hover:underline underline-offset-4"
+            >
+              Back to Store
+            </Link>
+            <AdminLogoutButton />
+          </div>
         </div>
       </header>
 
