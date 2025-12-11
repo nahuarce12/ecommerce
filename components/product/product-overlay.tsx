@@ -84,13 +84,27 @@ export function ProductOverlay() {
           <div className="relative flex-1 h-[40vh] md:h-[50vh] lg:h-full bg-secondary/10">
             <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8">
               <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
-                <Image
-                  src={selectedProduct.images[currentImageIndex] || selectedProduct.images[0]}
-                  alt={selectedProduct.name}
-                  fill
-                  className="object-contain"
-                  priority
-                />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentImageIndex}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ 
+                      duration: 0.3,
+                      ease: [0.22, 1, 0.36, 1]
+                    }}
+                    className="relative w-full h-full"
+                  >
+                    <Image
+                      src={selectedProduct.images[currentImageIndex] || selectedProduct.images[0]}
+                      alt={selectedProduct.name}
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
             
@@ -99,13 +113,13 @@ export function ProductOverlay() {
               <>
                 <button 
                   onClick={handlePrevImage}
-                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background"
+                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 p-2"
                 >
                   <ChevronLeft className="h-4 w-4 md:h-6 md:w-6" />
                 </button>
                 <button 
                   onClick={handleNextImage}
-                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background"
+                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 p-2"
                 >
                   <ChevronRight className="h-4 w-4 md:h-6 md:w-6" />
                 </button>
