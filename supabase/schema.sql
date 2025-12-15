@@ -7,6 +7,13 @@ create table public.profiles (
   full_name text,
   avatar_url text,
   role text default 'user' check (role in ('user', 'admin')),
+  phone varchar(20),
+  address_line1 text,
+  address_line2 text,
+  city text,
+  state_province text,
+  postal_code varchar(10),
+  country text default 'Argentina',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
