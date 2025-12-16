@@ -39,12 +39,12 @@ export function prefillShippingFromProfile(profile: Profile | null): ShippingDat
 
   return {
     full_name: profile.full_name || "",
-    phone: profile.phone,
-    address_line1: profile.address_line1,
+    phone: profile.phone!,
+    address_line1: profile.address_line1!,
     address_line2: profile.address_line2 || "",
-    city: profile.city,
-    state_province: profile.state_province,
-    postal_code: profile.postal_code,
+    city: profile.city!,
+    state_province: profile.state_province!,
+    postal_code: profile.postal_code!,
     country: profile.country || "Argentina",
   };
 }

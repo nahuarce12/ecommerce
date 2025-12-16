@@ -23,7 +23,7 @@ export function validateArgentinePhone(phone: string): { valid: boolean; error?:
     }
 
     return { valid: true };
-  } catch (error) {
+  } catch {
     return { valid: false, error: 'Formato de teléfono inválido' };
   }
 }
@@ -48,7 +48,7 @@ export function formatArgentinePhone(phone: string): string {
       // Format as +54 9 11 1234-5678
       return parsed.formatInternational();
     }
-  } catch (error) {
+  } catch {
     // Return cleaned input if parsing fails
     return phone;
   }

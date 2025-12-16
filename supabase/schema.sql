@@ -47,9 +47,12 @@ create table public.orders (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users on delete cascade not null,
   status text default 'pending' check (status in ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')) not null,
+  payment_status text default 'pending_payment' check (payment_status in ('pending_payment', 'paid', 'failed')) not null,
   total decimal(10, 2) not null,
+  shipping_cost decimal(10, 2) not null,
   shipping_address text not null,
   payment_method text,
+  payment_proof_url text,
   tracking_number text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -178,3 +181,63 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Function to restore stock when order is cancelled
+create or replace function public.restore_stock_on_cancel()
+returns trigger as $$
+begin
+  if NEW.status = 'cancelled' and OLD.status != 'cancelled' then
+    update public.products
+    set stock = products.stock + oi.quantity
+    from public.order_items oi
+    where products.id = oi.product_id
+      and oi.order_id = NEW.id;
+  end if;
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger to restore stock on order cancellation
+create trigger on_order_cancelled
+  after update on public.orders
+  for each row
+  when (NEW.status = 'cancelled' and OLD.status != 'cancelled')
+  execute procedure public.restore_stock_on_cancel();
+
+-- Function for admin to manually cancel unpaid orders older than 72 hours
+create or replace function public.cancel_unpaid_orders()
+returns table (cancelled_count bigint) as $$
+declare
+  count bigint;
+begin
+  -- Only admins can execute this function
+  if not exists (select 1 from profiles where id = auth.uid() and role = 'admin') then
+    raise exception 'Only admins can cancel unpaid orders';
+  end if;
+
+  update public.orders
+  set status = 'cancelled',
+      updated_at = now()
+  where status = 'pending'
+    and payment_status = 'pending_payment'
+    and created_at < now() - interval '72 hours';
+  
+  get diagnostics count = ROW_COUNT;
+  return query select count;
+end;
+$$ language plpgsql security definer;
+
+-- Function to decrement product stock
+create or replace function public.decrement_stock(product_id uuid, quantity integer)
+returns void as $$
+begin
+  update public.products
+  set stock = stock - quantity
+  where id = product_id
+    and stock >= quantity;
+  
+  if not found then
+    raise exception 'Insufficient stock for product %', product_id;
+  end if;
+end;
+$$ language plpgsql security definer;

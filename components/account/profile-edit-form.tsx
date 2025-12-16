@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Profile, ARGENTINA_PROVINCES } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";

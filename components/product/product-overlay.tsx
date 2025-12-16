@@ -18,11 +18,14 @@ export function ProductOverlay() {
   const { selectedProduct, setSelectedProduct, toggleCart } = useUIStore();
   const { addItem } = useCartStore();
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const isOutOfStock = selectedProduct ? selectedProduct.stock <= 0 : false;
 
-  // Reset size and image index when product changes
+  // Reset size, color and image index when product changes
   useEffect(() => {
     setSelectedSize(null);
+    setSelectedColor(null);
     setCurrentImageIndex(0);
   }, [selectedProduct]);
 
@@ -53,8 +56,8 @@ export function ProductOverlay() {
   }, [selectedProduct]);
 
   const handleAddToCart = () => {
-    if (!selectedSize || !selectedProduct) return;
-    addItem(selectedProduct, selectedSize);
+    if (!selectedSize || !selectedColor || !selectedProduct) return;
+    addItem(selectedProduct, selectedSize, selectedColor);
     toggleCart();
     setSelectedProduct(null);
   };
@@ -151,6 +154,27 @@ export function ProductOverlay() {
                 </p>
               </div>
 
+              {/* Color Selector */}
+              <div className="space-y-3 md:space-y-4">
+                <span className="text-xs md:text-sm font-medium uppercase">Select Color</span>
+                <div className="flex gap-2 flex-wrap">
+                  {selectedProduct.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`
+                        px-4 h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors uppercase
+                        ${selectedColor === color 
+                          ? "bg-foreground text-background border-foreground" 
+                          : "hover:bg-accent border-input"}
+                      `}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Size Selector */}
               <div className="space-y-3 md:space-y-4">
                 <div className="flex justify-between items-center">
@@ -177,14 +201,26 @@ export function ProductOverlay() {
                 </div>
               </div>
 
-              {/* Add to Cart */}
-              <Button 
-                className="w-full h-10 md:h-12 text-sm md:text-base uppercase tracking-wide"
-                disabled={!selectedSize}
-                onClick={handleAddToCart}
-              >
-                {selectedSize ? "Add to Cart" : "Select a Size"}
-              </Button>
+              {/* Add to Cart / Make Order */}
+              {isOutOfStock ? (
+                <Button 
+                  className="w-full h-10 md:h-12 text-sm md:text-base uppercase tracking-wide bg-gray-800 hover:bg-gray-900"
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    window.location.href = '/orders';
+                  }}
+                >
+                  HACER ENCARGO - SIN STOCK
+                </Button>
+              ) : (
+                <Button 
+                  className="w-full h-10 md:h-12 text-sm md:text-base uppercase tracking-wide"
+                  disabled={!selectedSize || !selectedColor}
+                  onClick={handleAddToCart}
+                >
+                  {!selectedColor ? "Select a Color" : !selectedSize ? "Select a Size" : "Add to Cart"}
+                </Button>
+              )}
 
               {/* Information Accordion */}
               <Accordion type="single" collapsible className="w-full">

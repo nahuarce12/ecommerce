@@ -5,14 +5,15 @@ import { Product } from '@/types'
 export interface CartItem {
   product: Product
   size: string
+  color: string
   quantity: number
 }
 
 interface CartState {
   items: CartItem[]
-  addItem: (product: Product, size: string) => void
-  removeItem: (productId: string, size: string) => void
-  updateQuantity: (productId: string, size: string, quantity: number) => void
+  addItem: (product: Product, size: string, color: string) => void
+  removeItem: (productId: string, size: string, color: string) => void
+  updateQuantity: (productId: string, size: string, color: string, quantity: number) => void
   clearCart: () => void
   getTotal: () => number
   getItemCount: () => number
@@ -23,40 +24,40 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       
-      addItem: (product, size) => {
+      addItem: (product, size, color) => {
         const items = get().items
         const existingItem = items.find(
-          (item) => item.product.id === product.id && item.size === size
+          (item) => item.product.id === product.id && item.size === size && item.color === color
         )
 
         if (existingItem) {
           set({
             items: items.map((item) =>
-              item.product.id === product.id && item.size === size
+              item.product.id === product.id && item.size === size && item.color === color
                 ? { ...item, quantity: item.quantity + 1 }
                 : item
             ),
           })
         } else {
-          set({ items: [...items, { product, size, quantity: 1 }] })
+          set({ items: [...items, { product, size, color, quantity: 1 }] })
         }
       },
 
-      removeItem: (productId, size) => {
+      removeItem: (productId, size, color) => {
         set({
           items: get().items.filter(
-            (item) => !(item.product.id === productId && item.size === size)
+            (item) => !(item.product.id === productId && item.size === size && item.color === color)
           ),
         })
       },
 
-      updateQuantity: (productId, size, quantity) => {
+      updateQuantity: (productId, size, color, quantity) => {
         if (quantity <= 0) {
-          get().removeItem(productId, size)
+          get().removeItem(productId, size, color)
         } else {
           set({
             items: get().items.map((item) =>
-              item.product.id === productId && item.size === size
+              item.product.id === productId && item.size === size && item.color === color
                 ? { ...item, quantity }
                 : item
             ),

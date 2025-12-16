@@ -32,7 +32,9 @@ interface Order {
   id: string;
   user_id: string;
   status: string;
+  payment_status: string;
   total: number;
+  shipping_cost: number;
   shipping_address: string;
   payment_method: string;
   tracking_number: string | null;
@@ -64,12 +66,44 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     const supabase = createClient();
-    const { data } = await supabase
+    
+    // First check if user is authenticated and admin
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error("User not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    // Get orders
+    const { data, error } = await supabase
       .from("orders")
-      .select("*, profiles(full_name, id)")
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (data) setOrders(data as any);
+    if (error) {
+      console.error("Error fetching orders:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+    }
+    
+    if (data) {
+      console.log("Orders fetched:", data.length);
+      
+      // Get profiles for each unique user_id
+      const userIds = [...new Set(data.map(order => order.user_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      
+      // Merge profiles into orders
+      const ordersWithProfiles = data.map(order => ({
+        ...order,
+        profiles: profilesData?.find(p => p.id === order.user_id) || null
+      }));
+      
+      setOrders(ordersWithProfiles as any);
+    }
     setLoading(false);
   };
 
@@ -126,6 +160,25 @@ export default function OrdersPage() {
       fetchOrders();
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber });
+      }
+    }
+  };
+
+  const handlePaymentStatusUpdate = async (orderId: string, newPaymentStatus: string) => {
+    const supabase = createClient();
+    
+    const { error } = await supabase
+      .from("orders")
+      .update({ payment_status: newPaymentStatus, updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+
+    if (error) {
+      alert("Failed to update payment status");
+      console.error(error);
+    } else {
+      fetchOrders();
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, payment_status: newPaymentStatus });
       }
     }
   };
@@ -273,10 +326,10 @@ export default function OrdersPage() {
               {/* Order Status */}
               <div className="border p-4 space-y-3">
                 <h3 className="font-bold uppercase text-sm">Order Status</h3>
-                <div className="flex gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
                     <label className="text-xs uppercase font-medium block mb-2">
-                      Status
+                      Order Status
                     </label>
                     <Select
                       value={selectedOrder.status}
@@ -295,7 +348,25 @@ export default function OrdersPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex-1">
+                  <div>
+                    <label className="text-xs uppercase font-medium block mb-2">
+                      Payment Status
+                    </label>
+                    <Select
+                      value={selectedOrder.payment_status}
+                      onValueChange={(val) => handlePaymentStatusUpdate(selectedOrder.id, val)}
+                    >
+                      <SelectTrigger className="uppercase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending_payment" className="uppercase">Pending</SelectItem>
+                        <SelectItem value="paid" className="uppercase">Paid</SelectItem>
+                        <SelectItem value="failed" className="uppercase">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <label className="text-xs uppercase font-medium block mb-2">
                       Tracking Number
                     </label>
