@@ -5,8 +5,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye } from "lucide-react";
+import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye, CreditCard, RefreshCw } from "lucide-react";
 import { BANK_INFO, WHATSAPP_NUMBER, generateWhatsAppLink } from "@/lib/payment-methods";
+import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -14,16 +15,20 @@ interface PageProps {
   params: Promise<{
     orderId: string;
   }>;
+  searchParams: Promise<{
+    status?: string;
+  }>;
 }
 
-export default async function OrderSuccessPage({ params }: PageProps) {
+export default async function OrderSuccessPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
+  const { status: mpStatus } = await searchParams;
   const supabase = await createClient();
 
   // Get current user
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
   // Get order with items
@@ -58,6 +63,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
 
   const isBankTransfer = order.payment_method === "bank_transfer";
   const isCash = order.payment_method === "cash";
+  const isMercadoPago = order.payment_method === "mercadopago";
   const whatsappLink = generateWhatsAppLink(orderId, isBankTransfer ? "payment" : "coordination");
 
   const subtotal = order.total - order.shipping_cost;
@@ -136,9 +142,12 @@ export default async function OrderSuccessPage({ params }: PageProps) {
                   {order.payment_status.replace("_", " ")}
                 </Badge>
               </div>
-              <p className="text-xs uppercase leading-relaxed text-gray-700">
+              <p className="text-xs uppercase leading-relaxed text-gray-700 mb-3">
                 TU PEDIDO SERÁ PROCESADO UNA VEZ QUE SE CONFIRME EL PAGO. TIENES 72 HORAS PARA COMPLETAR EL PAGO, LUEGO EL PEDIDO SERÁ CANCELADO AUTOMÁTICAMENTE.
               </p>
+              {isMercadoPago && (
+                <RetryPaymentButton orderId={orderId} />
+              )}
             </AlertDescription>
           </Alert>
         ) : order.payment_status === "paid" ? (
@@ -166,15 +175,18 @@ export default async function OrderSuccessPage({ params }: PageProps) {
                   {order.payment_status.replace("_", " ")}
                 </Badge>
               </div>
-              <p className="text-xs uppercase leading-relaxed text-gray-700">
-                HUBO UN PROBLEMA CON EL PAGO. POR FAVOR CONTACTA AL SOPORTE.
+              <p className="text-xs uppercase leading-relaxed text-gray-700 mb-3">
+                HUBO UN PROBLEMA CON EL PAGO. PUEDES INTENTAR NUEVAMENTE.
               </p>
+              {isMercadoPago && (
+                <RetryPaymentButton orderId={orderId} />
+              )}
             </AlertDescription>
           </Alert>
         )}
 
         {/* Order Items */}
-        <Card className="mb-6 border-2 border-black">
+        <Card className="mb-6 border-2 border">
           <CardHeader>
             <CardTitle className="uppercase flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -185,7 +197,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
             <div className="space-y-4">
               {order.order_items.map((item: any) => (
                 <div key={item.id} className="flex gap-4">
-                  <div className="relative w-20 h-20 flex-shrink-0 border border-black">
+                  <div className="relative w-20 h-20 flex-shrink-0 border border">
                     <Image
                       src={item.product.images[0]}
                       alt={item.product.name}
@@ -243,13 +255,101 @@ export default async function OrderSuccessPage({ params }: PageProps) {
         </Card>
 
         {/* Payment Instructions */}
+        {isMercadoPago && (
+          <>
+            {(order.payment_status === "paid" && order.status === "confirmed") ? (
+              <Card className="mb-6 border-2 border-green-600 bg-green-50">
+                <CardHeader>
+                  <CardTitle className="uppercase flex items-center gap-2 text-green-700">
+                    <CheckCircle className="h-5 w-5" />
+                    PAGO APROBADO CON MERCADOPAGO
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Alert className="border-green-600 bg-white">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="space-y-2">
+                      <p className="font-semibold uppercase text-sm">¡TU PAGO FUE PROCESADO EXITOSAMENTE!</p>
+                      <p className="text-xs uppercase leading-relaxed">
+                        TU PEDIDO HA SIDO CONFIRMADO Y ESTÁ SIENDO PROCESADO. RECIBIRÁS UNA NOTIFICACIÓN CUANDO SEA ENVIADO.
+                      </p>
+                      {order.mercadopago_payment_id && (
+                        <p className="text-xs font-mono text-gray-600">
+                          ID de Pago: {order.mercadopago_payment_id}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            ) : order.payment_status === "failed" ? (
+              <Card className="mb-6 border-2 border-red-600 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="uppercase flex items-center gap-2 text-red-700">
+                    <CreditCard className="h-5 w-5" />
+                    PAGO RECHAZADO
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Alert className="border-red-600 bg-white">
+                    <AlertDescription className="space-y-2">
+                      <p className="font-semibold uppercase text-sm text-red-700">EL PAGO NO PUDO SER PROCESADO</p>
+                      <p className="text-xs uppercase leading-relaxed">
+                        HUBO UN PROBLEMA AL PROCESAR TU PAGO CON MERCADOPAGO. PUEDES INTENTAR NUEVAMENTE O ELEGIR OTRO MÉTODO DE PAGO.
+                      </p>
+                      {order.mercadopago_payment_id && (
+                        <p className="text-xs font-mono text-gray-600">
+                          ID de Pago: {order.mercadopago_payment_id}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                  <RetryPaymentButton orderId={orderId} />
+                  <Link href="/checkout">
+                    <Button variant="outline" className="w-full border-2 border uppercase">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      CAMBIAR MÉTODO DE PAGO
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="mb-6 border-2 border-yellow-600 bg-yellow-50">
+                <CardHeader>
+                  <CardTitle className="uppercase flex items-center gap-2 text-yellow-700">
+                    <Package className="h-5 w-5" />
+                    PAGO PENDIENTE
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Alert className="border-yellow-600 bg-white">
+                    <AlertDescription className="space-y-2">
+                      <p className="font-semibold uppercase text-sm">TU PAGO ESTÁ SIENDO PROCESADO</p>
+                      <p className="text-xs uppercase leading-relaxed">
+                        {mpStatus === "pending" 
+                          ? "TU PAGO ESTÁ PENDIENTE DE ACREDITACIÓN. TE NOTIFICAREMOS CUANDO SE CONFIRME."
+                          : "ESTAMOS ESPERANDO LA CONFIRMACIÓN DEL PAGO. ESTO PUEDE TOMAR UNOS MINUTOS."}
+                      </p>
+                      {order.mercadopago_payment_id && (
+                        <p className="text-xs font-mono text-gray-600">
+                          ID de Pago: {order.mercadopago_payment_id}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
         {isBankTransfer && (
-          <Card className="mb-6 border-2 border-black">
+          <Card className="mb-6 border-2 border">
             <CardHeader>
               <CardTitle className="uppercase">INSTRUCCIONES DE PAGO</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert className="border-black">
+              <Alert className="border">
                 <AlertDescription>
                   <p className="font-semibold uppercase mb-3 text-sm">TRANSFERENCIA BANCARIA</p>
                   <div className="space-y-2 text-xs">
@@ -293,7 +393,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
         )}
 
         {isCash && (
-          <Card className="mb-6 border-2 border-black">
+          <Card className="mb-6 border-2 border">
             <CardHeader>
               <CardTitle className="uppercase">INSTRUCCIONES DE PAGO</CardTitle>
             </CardHeader>
@@ -318,7 +418,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
         )}
 
         {/* Shipping Address */}
-        <Card className="mb-6 border-2 border-black">
+        <Card className="mb-6 border-2 border">
           <CardHeader>
             <CardTitle className="uppercase flex items-center gap-2">
               <Truck className="h-5 w-5" />
@@ -333,7 +433,7 @@ export default async function OrderSuccessPage({ params }: PageProps) {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Link href="/account/orders" className="flex-1">
-            <Button variant="outline" className="w-full border-2 border-black uppercase h-12">
+            <Button variant="outline" className="w-full border-2 border uppercase h-12">
               <Eye className="h-4 w-4 mr-2" />
               VER MIS PEDIDOS
             </Button>

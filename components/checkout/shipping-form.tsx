@@ -169,7 +169,7 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
   const isComplete = formData.phone && formData.address_line1 && formData.city && formData.state_province && formData.postal_code;
 
   return (
-    <Card className="border-2 border-black">
+    <Card className="border-2 border">
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
           <CardTitle className="uppercase">DIRECCIÓN DE ENVÍO</CardTitle>
@@ -202,7 +202,7 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
         ) : (
           <div className="space-y-4">
             {!profile && (
-              <Alert className="border-black">
+              <Alert className="border">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs uppercase">
                   ESTA DIRECCIÓN SE GUARDARÁ EN TU PERFIL

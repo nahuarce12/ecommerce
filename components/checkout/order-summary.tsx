@@ -21,7 +21,7 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
   const total = subtotal + (shipping?.cost || 0);
 
   return (
-    <Card className="border-2 border-black">
+    <Card className="border-2 border">
       <CardHeader>
         <CardTitle className="uppercase">RESUMEN DEL PEDIDO</CardTitle>
       </CardHeader>
@@ -34,7 +34,7 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
               key={`${item.product.id}-${item.size}-${item.color}`}
               className="flex gap-3"
             >
-              <div className="relative w-16 h-16 flex-shrink-0 border border-black">
+              <div className="relative w-16 h-16 flex-shrink-0 border border">
                 <Image
                   src={item.product.images[0]}
                   alt={item.product.name}

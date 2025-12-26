@@ -44,7 +44,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
   };
 
   return (
-    <Card className="border-2 border-black">
+    <Card className="border-2 border">
       <CardHeader>
         <CardTitle className="uppercase">MÉTODO DE PAGO</CardTitle>
       </CardHeader>
@@ -54,7 +54,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
           <div className="space-y-4">
             {paymentMethods.map((method) => (
               <div key={method.id}>
-                <div className="flex items-start space-x-3 border-2 border-black p-4">
+                <div className="flex items-start space-x-3 border-2 border p-4">
                   <RadioGroupItem value={method.id} id={method.id} className="mt-1" />
                   <Label htmlFor={method.id} className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-2 mb-1">
@@ -74,7 +74,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
 
                 {/* Bank Transfer Details */}
                 {selectedMethod === "bank_transfer" && method.id === "bank_transfer" && (
-                  <Alert className="mt-3 border-black">
+                  <Alert className="mt-3 border">
                     <Building2 className="h-4 w-4" />
                     <AlertDescription>
                       <p className="font-semibold uppercase mb-3 text-sm">DATOS BANCARIOS</p>
@@ -136,7 +136,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
 
                 {/* Cash Details */}
                 {selectedMethod === "cash" && method.id === "cash" && (
-                  <Alert className="mt-3 border-black">
+                  <Alert className="mt-3 border">
                     <Wallet className="h-4 w-4" />
                     <AlertDescription>
                       <p className="font-semibold uppercase mb-2 text-sm">PAGO EN EFECTIVO</p>
@@ -152,7 +152,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
         </RadioGroup>
 
         {!selectedMethod && (
-          <Alert className="mt-4 border-black">
+          <Alert className="mt-4 border">
             <AlertDescription className="text-xs uppercase">
               SELECCIONA UN MÉTODO DE PAGO PARA CONTINUAR
             </AlertDescription>

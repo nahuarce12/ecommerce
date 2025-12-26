@@ -133,31 +133,82 @@ export default function CheckoutPage() {
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items,
-          paymentMethod: selectedPaymentMethod,
-          shippingCity,
-          shippingProvince,
-        }),
-      });
+      // For MercadoPago, we need to create the order first, then redirect to payment
+      if (selectedPaymentMethod === "mercadopago") {
+        // Create order without stock decrement
+        const response = await fetch("/api/orders/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items,
+            paymentMethod: selectedPaymentMethod,
+            shippingCity,
+            shippingProvince,
+          }),
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok) {
-        console.error("Error response from API:", result);
+        if (!response.ok) {
+          console.error("Error response from API:", result);
+          setSubmitting(false);
+          throw new Error(result.error || "Error al crear la orden");
+        }
+
+        console.log("Order created successfully:", result.orderId);
+
+        // Create MercadoPago preference
+        const preferenceResponse = await fetch("/api/mercadopago/create-preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: result.orderId,
+          }),
+        });
+
+        const preferenceResult = await preferenceResponse.json();
+
+        if (!preferenceResponse.ok) {
+          console.error("Error creating preference:", preferenceResult);
+          setSubmitting(false);
+          throw new Error(preferenceResult.error || "Error al crear la preferencia de pago");
+        }
+
+        // Clear cart before redirecting
+        clearCart();
+
+        // Redirect to MercadoPago checkout
+        const initPoint = preferenceResult.sandboxInitPoint || preferenceResult.initPoint;
+        window.location.href = initPoint;
+        
+      } else {
+        // For other payment methods, proceed normally
+        const response = await fetch("/api/orders/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items,
+            paymentMethod: selectedPaymentMethod,
+            shippingCity,
+            shippingProvince,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error("Error response from API:", result);
+          setSubmitting(false);
+          throw new Error(result.error || "Error al crear la orden");
+        }
+
+        console.log("Order created successfully:", result.orderId);
+        clearCart();
         setSubmitting(false);
-        throw new Error(result.error || "Error al crear la orden");
+        
+        // Navigate to success page
+        router.push(`/checkout/success/${result.orderId}`);
       }
-
-      console.log("Order created successfully:", result.orderId);
-      clearCart();
-      setSubmitting(false);
-      
-      // Navigate to success page
-      router.push(`/checkout/success/${result.orderId}`);
     } catch (error) {
       console.error("Error submitting order:", error);
       alert(error instanceof Error ? error.message : "Error al procesar el pedido");
@@ -190,7 +241,7 @@ export default function CheckoutPage() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold uppercase">CHECKOUT</h1>
           <Link href="/">
-            <Button variant="outline" className="border-2 border-black uppercase">
+            <Button variant="outline" className="border-2 border uppercase">
               <ArrowLeft className="h-4 w-4 mr-2" />
               VOLVER A LA TIENDA
             </Button>
@@ -219,7 +270,7 @@ export default function CheckoutPage() {
         )}
 
         {checkingStock && (
-          <Alert className="mb-6 border-black">
+          <Alert className="mb-6 border">
             <Loader2 className="h-4 w-4 animate-spin" />
             <AlertDescription className="uppercase">
               VERIFICANDO STOCK...

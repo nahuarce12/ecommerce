@@ -32,7 +32,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     id: 'mercadopago',
     name: 'MercadoPago',
     description: 'Pago con tarjeta o QR',
-    enabled: false,
+    enabled: true,
     type: 'mercadopago',
   },
 ];

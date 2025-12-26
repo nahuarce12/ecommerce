@@ -71,6 +71,9 @@ export interface Order {
   shipping_address: string;
   payment_method: string | null;
   tracking_number: string | null;
+  mercadopago_preference_id?: string | null;
+  mercadopago_payment_id?: string | null;
+  mercadopago_merchant_order_id?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Eye } from "lucide-react";
+import { Package, Eye, RefreshCw, CreditCard } from "lucide-react";
+import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
 import Link from "next/link";
 
 export default async function OrdersPage() {
@@ -11,7 +12,7 @@ export default async function OrdersPage() {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    redirect("/auth/login");
+    redirect("/login");
   }
 
   const { data: orders } = await supabase
@@ -20,6 +21,7 @@ export default async function OrdersPage() {
       id,
       status,
       payment_status,
+      payment_method,
       total,
       created_at,
       tracking_number,
@@ -105,13 +107,13 @@ export default async function OrdersPage() {
                         })}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Badge className={`${getStatusColor(order.status)} text-white uppercase text-xs`}>
                         {order.status}
                       </Badge>
-                      {/*<Badge className={`${getPaymentStatusColor(order.payment_status)} text-white uppercase text-xs`}>
+                      <Badge className={`${getPaymentStatusColor(order.payment_status)} text-white uppercase text-xs`}>
                         {order.payment_status.replace("_", " ")}
-                      </Badge>*/}
+                      </Badge>
                     </div>
                   </div>
                 </CardHeader>
@@ -130,12 +132,14 @@ export default async function OrdersPage() {
                         </p>
                       )}
                     </div>
-                    <Link href={`/checkout/success/${order.id}`}>
-                      <Button variant="outline" className="border-2 uppercase w-full md:w-auto">
-                        <Eye className="h-4 w-4 mr-2" />
-                        VER DETALLES
-                      </Button>
-                    </Link>
+                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                      <Link href={`/checkout/success/${order.id}`} className="w-full">
+                        <Button variant="outline" className="border-2 uppercase w-full">
+                          <Eye className="h-4 w-4 mr-2" />
+                          VER DETALLES
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

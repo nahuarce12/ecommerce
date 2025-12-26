@@ -116,7 +116,9 @@ export async function POST(request: NextRequest) {
 
     orderId = order.id;
 
-    // Create order items and update stock
+    // Create order items and update stock (skip stock decrement for MercadoPago)
+    const shouldDecrementStock = paymentMethod !== "mercadopago";
+
     for (const item of items) {
       // Get current price
       const { data: product } = await supabase
@@ -157,21 +159,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Update stock
-      const { error: stockError } = await supabase.rpc("decrement_stock", {
-        product_id: item.product.id,
-        quantity: item.quantity,
-      });
+      // Update stock only if not MercadoPago (stock will be decremented after payment confirmation)
+      if (shouldDecrementStock) {
+        const { error: stockError } = await supabase.rpc("decrement_stock", {
+          product_id: item.product.id,
+          quantity: item.quantity,
+        });
 
-      if (stockError) {
-        console.error("Error updating stock:", stockError);
-        console.error("Stock error details:", JSON.stringify(stockError, null, 2));
-        // Rollback: delete order and items
-        await supabase.from("orders").delete().eq("id", orderId);
-        return NextResponse.json(
-          { error: `ERROR AL ACTUALIZAR EL STOCK: ${stockError.message || 'Función decrement_stock no existe en la base de datos'}` },
-          { status: 500 }
-        );
+        if (stockError) {
+          console.error("Error updating stock:", stockError);
+          console.error("Stock error details:", JSON.stringify(stockError, null, 2));
+          // Rollback: delete order and items
+          await supabase.from("orders").delete().eq("id", orderId);
+          return NextResponse.json(
+            { error: `ERROR AL ACTUALIZAR EL STOCK: ${stockError.message || 'Función decrement_stock no existe en la base de datos'}` },
+            { status: 500 }
+          );
+        }
       }
     }
 
