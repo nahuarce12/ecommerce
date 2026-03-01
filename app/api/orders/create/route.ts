@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateShipping } from "@/lib/shipping-calculator";
 import { formatShippingAddress } from "@/lib/shipping-helpers";
+import { sendNotificationEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,7 +81,30 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (product.stock < item.quantity) {
+      // Check per-size stock if applicable
+      const itemSize = item.size || 'ÚNICO';
+      if (itemSize !== 'ÚNICO') {
+        const { data: sizeData } = await supabase
+          .from("product_sizes")
+          .select("stock")
+          .eq("product_id", item.product.id)
+          .eq("size_label", itemSize)
+          .single();
+
+        if (sizeData) {
+          if (sizeData.stock < item.quantity) {
+            return NextResponse.json(
+              { error: `STOCK INSUFICIENTE PARA ${item.product.name} TALLE ${itemSize}. DISPONIBLE: ${sizeData.stock}` },
+              { status: 400 }
+            );
+          }
+        } else if (product.stock < item.quantity) {
+          return NextResponse.json(
+            { error: `STOCK INSUFICIENTE PARA ${item.product.name}. DISPONIBLE: ${product.stock}` },
+            { status: 400 }
+          );
+        }
+      } else if (product.stock < item.quantity) {
         return NextResponse.json(
           { error: `STOCK INSUFICIENTE PARA ${item.product.name}. DISPONIBLE: ${product.stock}` },
           { status: 400 }
@@ -161,9 +185,11 @@ export async function POST(request: NextRequest) {
 
       // Update stock only if not MercadoPago (stock will be decremented after payment confirmation)
       if (shouldDecrementStock) {
+        const sizeLabel = item.size || 'ÚNICO';
         const { error: stockError } = await supabase.rpc("decrement_stock", {
           product_id: item.product.id,
           quantity: item.quantity,
+          size_label: sizeLabel !== 'ÚNICO' ? sizeLabel : null,
         });
 
         if (stockError) {
@@ -178,6 +204,23 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // Send order confirmation email (fire-and-forget)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const { data: orderItems } = await supabase
+      .from("order_items")
+      .select("*")
+      .eq("order_id", orderId);
+
+    sendNotificationEmail("order_confirmation", user.email!, {
+      orderId,
+      items: orderItems || [],
+      total: orderTotal + shipping.cost,
+      shippingCost: shipping.cost,
+      shippingAddress,
+      paymentMethod,
+      appUrl,
+    });
 
     return NextResponse.json({
       success: true,

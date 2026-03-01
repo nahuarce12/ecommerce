@@ -23,6 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageUpload } from "@/components/admin/image-upload";
+import { Plus, Trash2 } from "lucide-react";
+
+interface SizeStock {
+  label: string;
+  stock: string;
+}
 
 interface ProductFormDialogProps {
   onSuccess: () => void;
@@ -41,9 +47,10 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
     stock: "",
     category_id: "",
     images: [] as string[],
-    sizes: "",
     colors: "",
   });
+  const [hasSizes, setHasSizes] = useState(false);
+  const [sizeStocks, setSizeStocks] = useState<SizeStock[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -57,9 +64,21 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
         stock: selectedProduct.stock?.toString() || "",
         category_id: selectedProduct.category_id || "",
         images: selectedProduct.images || [],
-        sizes: selectedProduct.sizes?.join(", ") || "",
         colors: selectedProduct.colors?.join(", ") || "",
       });
+
+      if (selectedProduct.product_sizes && selectedProduct.product_sizes.length > 0) {
+        setHasSizes(true);
+        setSizeStocks(
+          selectedProduct.product_sizes.map((ps) => ({
+            label: ps.size_label,
+            stock: ps.stock.toString(),
+          }))
+        );
+      } else {
+        setHasSizes(false);
+        setSizeStocks([]);
+      }
     } else {
       resetForm();
     }
@@ -75,9 +94,10 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
       stock: "",
       category_id: "",
       images: [],
-      sizes: "",
       colors: "",
     });
+    setHasSizes(false);
+    setSizeStocks([]);
   };
 
   const generateSlug = (name: string) => {
@@ -95,11 +115,35 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
     }));
   };
 
+  const addSizeRow = () => {
+    setSizeStocks((prev) => [...prev, { label: "", stock: "0" }]);
+  };
+
+  const removeSizeRow = (index: number) => {
+    setSizeStocks((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSizeRow = (index: number, field: keyof SizeStock, value: string) => {
+    setSizeStocks((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const getTotalSizeStock = () => {
+    return sizeStocks.reduce((sum, s) => sum + (parseInt(s.stock) || 0), 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const supabase = createClient();
+
+    const sizesArray = hasSizes
+      ? sizeStocks.map((s) => s.label.trim()).filter(Boolean)
+      : [];
+
+    const totalStock = hasSizes ? getTotalSizeStock() : parseInt(formData.stock);
 
     const productData = {
       name: formData.name,
@@ -107,36 +151,77 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
       description: formData.description || null,
       price: parseFloat(formData.price),
       brand: formData.brand,
-      stock: parseInt(formData.stock),
+      stock: totalStock,
       category_id: formData.category_id || null,
       images: formData.images,
-      sizes: formData.sizes.split(",").map(s => s.trim()).filter(Boolean),
-      colors: formData.colors.split(",").map(c => c.trim()).filter(Boolean),
+      sizes: sizesArray,
+      colors: formData.colors.split(",").map((c) => c.trim()).filter(Boolean),
     };
 
     let error;
+    let productId: string | undefined;
+
     if (selectedProduct?.id) {
-      // Update
+      // Update product
       ({ error } = await supabase
         .from("products")
         .update(productData)
         .eq("id", selectedProduct.id));
+      productId = selectedProduct.id;
     } else {
-      // Insert
-      ({ error } = await supabase.from("products").insert([productData]));
+      // Insert product
+      const { data, error: insertError } = await supabase
+        .from("products")
+        .insert([productData])
+        .select("id")
+        .single();
+      error = insertError;
+      productId = data?.id;
+    }
+
+    if (error || !productId) {
+      setLoading(false);
+      alert("Failed to save product: " + (error?.message || "Unknown error"));
+      console.error(error);
+      return;
+    }
+
+    // Handle product_sizes
+    if (hasSizes) {
+      // Delete existing sizes
+      await supabase.from("product_sizes").delete().eq("product_id", productId);
+
+      // Insert new sizes
+      const sizeRows = sizeStocks
+        .filter((s) => s.label.trim())
+        .map((s) => ({
+          product_id: productId!,
+          size_label: s.label.trim().toUpperCase(),
+          stock: parseInt(s.stock) || 0,
+        }));
+
+      if (sizeRows.length > 0) {
+        const { error: sizeError } = await supabase
+          .from("product_sizes")
+          .insert(sizeRows);
+
+        if (sizeError) {
+          setLoading(false);
+          alert("Error saving sizes: " + sizeError.message);
+          console.error(sizeError);
+          return;
+        }
+      }
+    } else {
+      // Remove any existing product_sizes if switching to no-sizes
+      await supabase.from("product_sizes").delete().eq("product_id", productId);
     }
 
     setLoading(false);
-
-    if (error) {
-      alert("Failed to save product: " + error.message);
-      console.error(error);
-    } else {
-      setProductDialogOpen(false);
-      setSelectedProduct(null);
-      resetForm();
-      onSuccess();
-    }
+    setProductDialogOpen(false);
+    setSelectedProduct(null);
+    resetForm();
+    onSuccess();
   };
 
   const handleClose = () => {
@@ -245,30 +330,92 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
               />
             </div>
 
-            <div>
-              <label className="text-xs uppercase font-medium block mb-2">
-                Stock *
+            {/* Sizes toggle */}
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasSizes}
+                  onChange={(e) => {
+                    setHasSizes(e.target.checked);
+                    if (e.target.checked && sizeStocks.length === 0) {
+                      setSizeStocks([{ label: "", stock: "0" }]);
+                    }
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-xs uppercase font-medium">
+                  Este producto tiene talles
+                </span>
               </label>
-              <Input
-                type="number"
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                required
-                placeholder="10"
-              />
             </div>
 
-            <div className="col-span-2">
-              <label className="text-xs uppercase font-medium block mb-2">
-                Sizes (comma separated)
-              </label>
-              <Input
-                value={formData.sizes}
-                onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-                placeholder="S, M, L, XL"
-                className="uppercase"
-              />
-            </div>
+            {/* Stock input (only when no sizes) */}
+            {!hasSizes && (
+              <div className="col-span-2">
+                <label className="text-xs uppercase font-medium block mb-2">
+                  Stock *
+                </label>
+                <Input
+                  type="number"
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  required
+                  placeholder="10"
+                />
+              </div>
+            )}
+
+            {/* Per-size stock (when sizes enabled) */}
+            {hasSizes && (
+              <div className="col-span-2 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs uppercase font-medium">
+                    Talles y Stock
+                  </label>
+                  <span className="text-xs text-muted-foreground uppercase">
+                    Stock total: {getTotalSizeStock()}
+                  </span>
+                </div>
+                {sizeStocks.map((sizeRow, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Input
+                      value={sizeRow.label}
+                      onChange={(e) => updateSizeRow(index, "label", e.target.value)}
+                      placeholder="Ej: S, M, L, XL"
+                      className="uppercase flex-1"
+                    />
+                    <Input
+                      type="number"
+                      value={sizeRow.stock}
+                      onChange={(e) => updateSizeRow(index, "stock", e.target.value)}
+                      placeholder="Stock"
+                      className="w-24"
+                      min="0"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeSizeRow(index)}
+                      disabled={sizeStocks.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addSizeRow}
+                  className="uppercase w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Talle
+                </Button>
+              </div>
+            )}
 
             <div className="col-span-2">
               <label className="text-xs uppercase font-medium block mb-2">

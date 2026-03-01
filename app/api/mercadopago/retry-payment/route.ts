@@ -49,13 +49,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile for payer info
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
       accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -88,22 +81,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://2q4d6smw-3000.brs.devtunnels.ms";
 
-    // Create new preference
+    // Create new preference - NO enviar payer info para evitar pre-autenticación en sandbox
     const preferenceData = {
       items,
-      payer: {
-        name: profile?.full_name || undefined,
-        email: user.email || undefined,
-        phone: {
-          number: profile?.phone || undefined,
-        },
-        address: {
-          street_name: profile?.address_line1 || undefined,
-          zip_code: profile?.postal_code || undefined,
-        }
-      },
       back_urls: {
         success: `${appUrl}/checkout/success/${orderId}?status=approved`,
         failure: `${appUrl}/checkout/success/${orderId}?status=failure`,
@@ -113,9 +95,6 @@ export async function POST(request: NextRequest) {
       notification_url: `${appUrl}/api/mercadopago/webhook`,
       external_reference: orderId,
       statement_descriptor: "SUPPLY STORE",
-      expires: true,
-      expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48 hours
     };
 
     const response = await preference.create({ body: preferenceData });
@@ -139,8 +118,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       preferenceId: response.id,
-      initPoint: response.init_point,
-      sandboxInitPoint: response.sandbox_init_point,
+      initPoint: response.sandbox_init_point || response.init_point,
     });
 
   } catch (error) {

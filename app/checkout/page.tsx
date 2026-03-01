@@ -90,18 +90,36 @@ export default function CheckoutPage() {
       const issues: StockIssue[] = [];
 
       for (const item of items) {
-        const { data: product } = await supabase
-          .from("products")
-          .select("stock")
-          .eq("id", item.product.id)
-          .single();
+        let availableStock: number | null = null;
 
-        if (product && product.stock < item.quantity) {
+        if (item.size && item.size !== 'ÚNICO') {
+          const { data: sizeData } = await supabase
+            .from("product_sizes")
+            .select("stock")
+            .eq("product_id", item.product.id)
+            .eq("size_label", item.size)
+            .single();
+
+          if (sizeData) {
+            availableStock = sizeData.stock;
+          }
+        }
+
+        if (availableStock === null) {
+          const { data: product } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", item.product.id)
+            .single();
+          availableStock = product?.stock ?? 0;
+        }
+
+        if (availableStock !== null && availableStock < item.quantity) {
           issues.push({
             productId: item.product.id,
             productName: item.product.name,
             requestedQty: item.quantity,
-            availableStock: product.stock,
+            availableStock: availableStock ?? 0,
             size: item.size,
             color: item.color,
           });
@@ -178,8 +196,7 @@ export default function CheckoutPage() {
         clearCart();
 
         // Redirect to MercadoPago checkout
-        const initPoint = preferenceResult.sandboxInitPoint || preferenceResult.initPoint;
-        window.location.href = initPoint;
+        window.location.href = preferenceResult.initPoint;
         
       } else {
         // For other payment methods, proceed normally
@@ -218,7 +235,7 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white pt-32 pb-20">
+      <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
         <div className="container max-w-7xl mx-auto px-4">
           <div className="space-y-8">
             <Skeleton className="h-12 w-48" />
@@ -236,12 +253,12 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pt-32 pb-20">
+    <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
       <div className="container max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold uppercase">CHECKOUT</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <h1 className="text-2xl md:text-4xl font-bold uppercase">CHECKOUT</h1>
           <Link href="/">
-            <Button variant="outline" className="border-2 border uppercase">
+            <Button variant="outline" className="border-2 border uppercase w-full sm:w-auto">
               <ArrowLeft className="h-4 w-4 mr-2" />
               VOLVER A LA TIENDA
             </Button>

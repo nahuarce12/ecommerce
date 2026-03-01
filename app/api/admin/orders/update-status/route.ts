@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { sendNotificationEmail, getUserEmail } from "@/lib/email";
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "NO AUTENTICADO" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      return NextResponse.json({ error: "NO AUTORIZADO" }, { status: 403 });
+    }
+
+    const { orderId, newStatus } = await request.json();
+    if (!orderId || !newStatus) {
+      return NextResponse.json({ error: "DATOS INCOMPLETOS" }, { status: 400 });
+    }
+
+    const serviceClient = createServiceClient();
+
+    const { data: order, error: orderError } = await serviceClient
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("id", orderId)
+      .single();
+
+    if (orderError || !order) {
+      return NextResponse.json({ error: "ORDEN NO ENCONTRADA" }, { status: 404 });
+    }
+
+    const { error: updateError } = await serviceClient
+      .from("orders")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+
+    if (updateError) {
+      return NextResponse.json({ error: "ERROR AL ACTUALIZAR" }, { status: 500 });
+    }
+
+    if (newStatus === "shipped") {
+      const email = await getUserEmail(order.user_id);
+      if (email) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        sendNotificationEmail("order_shipped", email, {
+          orderId: order.id,
+          trackingNumber: order.tracking_number,
+          appUrl,
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    return NextResponse.json({ error: "ERROR INTERNO" }, { status: 500 });
+  }
+}

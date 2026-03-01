@@ -1,3 +1,10 @@
+export interface ProductSize {
+  id: string;
+  product_id: string;
+  size_label: string;
+  stock: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -10,6 +17,7 @@ export interface Product {
   images: string[];
   sizes: string[];
   colors: string[];
+  product_sizes?: ProductSize[];
   created_at: string;
 }
 

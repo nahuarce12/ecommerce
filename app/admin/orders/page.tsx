@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ export default function OrdersPage() {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const trackingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -125,18 +126,17 @@ export default function OrdersPage() {
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     setUpdatingStatus(true);
-    const supabase = createClient();
-    
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq("id", orderId);
+
+    const res = await fetch("/api/admin/orders/update-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, newStatus }),
+    });
 
     setUpdatingStatus(false);
 
-    if (error) {
+    if (!res.ok) {
       alert("Failed to update status");
-      console.error(error);
     } else {
       fetchOrders();
       if (selectedOrder?.id === orderId) {
@@ -145,36 +145,39 @@ export default function OrdersPage() {
     }
   };
 
-  const handleTrackingUpdate = async (orderId: string, trackingNumber: string) => {
-    const supabase = createClient();
-    
-    const { error } = await supabase
-      .from("orders")
-      .update({ tracking_number: trackingNumber, updated_at: new Date().toISOString() })
-      .eq("id", orderId);
-
-    if (error) {
-      alert("Failed to update tracking number");
-      console.error(error);
-    } else {
-      fetchOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber });
-      }
+  const handleTrackingUpdate = useCallback((orderId: string, trackingNumber: string) => {
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber });
     }
-  };
+
+    if (trackingDebounceRef.current) {
+      clearTimeout(trackingDebounceRef.current);
+    }
+
+    trackingDebounceRef.current = setTimeout(async () => {
+      const res = await fetch("/api/admin/orders/update-tracking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, trackingNumber }),
+      });
+
+      if (!res.ok) {
+        alert("Failed to update tracking number");
+      } else {
+        fetchOrders();
+      }
+    }, 800);
+  }, [selectedOrder]);
 
   const handlePaymentStatusUpdate = async (orderId: string, newPaymentStatus: string) => {
-    const supabase = createClient();
-    
-    const { error } = await supabase
-      .from("orders")
-      .update({ payment_status: newPaymentStatus, updated_at: new Date().toISOString() })
-      .eq("id", orderId);
+    const res = await fetch("/api/admin/orders/update-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, newPaymentStatus }),
+    });
 
-    if (error) {
+    if (!res.ok) {
       alert("Failed to update payment status");
-      console.error(error);
     } else {
       fetchOrders();
       if (selectedOrder?.id === orderId) {
@@ -235,7 +238,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="border">
+      <div className="border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

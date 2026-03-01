@@ -28,8 +28,7 @@ export function RetryPaymentButton({ orderId }: RetryPaymentButtonProps) {
       }
 
       // Redirect to MercadoPago checkout
-      const initPoint = result.sandboxInitPoint || result.initPoint;
-      window.location.href = initPoint;
+      window.location.href = result.initPoint;
 
     } catch (error) {
       console.error("Error retrying payment:", error);

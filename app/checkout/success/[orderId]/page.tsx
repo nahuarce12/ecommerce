@@ -113,14 +113,14 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
   };
 
   return (
-    <div className="min-h-screen bg-white pt-32 pb-20">
+    <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
       <div className="container max-w-4xl mx-auto px-4">
         {/* Success Header */}
         <div className="text-center mb-8">
           <div className={`inline-flex items-center justify-center w-16 h-16 ${getStatusIcon(order.status)} rounded-full mb-4`}>
             <CheckCircle className={`h-8 w-8 ${getStatusIconColor(order.status)}`} />
           </div>
-          <h1 className="text-4xl font-bold uppercase mb-2">{getStatusTitle(order.status)}</h1>
+          <h1 className="text-2xl md:text-4xl font-bold uppercase mb-2">{getStatusTitle(order.status)}</h1>
           <p className="text-gray-600 uppercase text-sm">
             NÚMERO DE PEDIDO: <span className="font-mono font-semibold">{orderId.slice(0, 8)}</span>
           </p>
@@ -353,13 +353,13 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
                 <AlertDescription>
                   <p className="font-semibold uppercase mb-3 text-sm">TRANSFERENCIA BANCARIA</p>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-200 gap-1">
                       <span className="text-gray-600 uppercase">CBU</span>
-                      <span className="font-mono font-semibold">{BANK_INFO.cbu}</span>
+                      <span className="font-mono font-semibold text-[10px] sm:text-xs break-all">{BANK_INFO.cbu}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-200 gap-1">
                       <span className="text-gray-600 uppercase">ALIAS</span>
-                      <span className="font-mono font-semibold">{BANK_INFO.alias}</span>
+                      <span className="font-mono font-semibold break-all">{BANK_INFO.alias}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-gray-200">
                       <span className="text-gray-600 uppercase">TITULAR</span>

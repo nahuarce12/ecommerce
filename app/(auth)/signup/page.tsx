@@ -35,6 +35,11 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
+      fetch("/api/auth/welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, fullName }),
+      }).catch(() => {});
       router.push("/login?registered=true");
     }
   };

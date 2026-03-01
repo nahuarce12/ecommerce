@@ -22,6 +22,14 @@ export function ProductOverlay() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const isOutOfStock = selectedProduct ? selectedProduct.stock <= 0 : false;
 
+  const getSizeStock = (size: string): number => {
+    if (!selectedProduct?.product_sizes || selectedProduct.product_sizes.length === 0) {
+      return selectedProduct?.stock ?? 0;
+    }
+    const ps = selectedProduct.product_sizes.find((s) => s.size_label === size);
+    return ps?.stock ?? 0;
+  };
+
   // Reset size, color and image index when product changes
   useEffect(() => {
     setSelectedSize(null);
@@ -184,20 +192,27 @@ export function ProductOverlay() {
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                  {selectedProduct.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`
-                        h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors
-                        ${selectedSize === size 
-                          ? "bg-foreground text-background border-foreground" 
-                          : "hover:bg-accent border-input"}
-                      `}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {selectedProduct.sizes.map((size) => {
+                    const sizeStock = getSizeStock(size);
+                    const sizeOutOfStock = sizeStock <= 0;
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => !sizeOutOfStock && setSelectedSize(size)}
+                        disabled={sizeOutOfStock}
+                        className={`
+                          h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors relative
+                          ${sizeOutOfStock
+                            ? "opacity-40 cursor-not-allowed line-through border-input"
+                            : selectedSize === size 
+                              ? "bg-foreground text-background border-foreground" 
+                              : "hover:bg-accent border-input"}
+                        `}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

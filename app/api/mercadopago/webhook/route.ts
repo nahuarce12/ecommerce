@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
+import { sendNotificationEmail, getUserEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,9 +96,11 @@ export async function POST(request: NextRequest) {
       // Decrement stock for each item (only if not already decremented)
       if (order.status === "pending" && order.payment_status === "pending_payment") {
         for (const item of order.order_items) {
+          const sizeLabel = item.size && item.size !== 'ÚNICO' ? item.size : null;
           const { error: stockError } = await supabase.rpc("decrement_stock", {
             product_id: item.product_id,
             quantity: item.quantity,
+            size_label: sizeLabel,
           });
 
           if (stockError) {
@@ -108,6 +111,18 @@ export async function POST(request: NextRequest) {
       }
 
       console.log("Order updated successfully to paid and confirmed");
+
+      // Send payment approved email
+      const email = await getUserEmail(order.user_id);
+      if (email) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        sendNotificationEmail("payment_approved", email, {
+          orderId: order.id,
+          total: order.total,
+          paymentMethod: order.payment_method,
+          appUrl,
+        });
+      }
 
     } else if (paymentStatus === "rejected" || paymentStatus === "cancelled") {
       // Payment rejected or cancelled

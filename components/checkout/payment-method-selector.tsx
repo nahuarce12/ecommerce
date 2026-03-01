@@ -79,10 +79,10 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
                     <AlertDescription>
                       <p className="font-semibold uppercase mb-3 text-sm">DATOS BANCARIOS</p>
                       <div className="space-y-2 text-xs">
-                        <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-gray-200 gap-1">
                           <span className="text-gray-600 uppercase">CBU</span>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold">{BANK_INFO.cbu}</span>
+                            <span className="font-mono font-semibold text-[10px] sm:text-xs break-all">{BANK_INFO.cbu}</span>
                             <button
                               onClick={() => copyToClipboard(BANK_INFO.cbu, "CBU")}
                               className="p-1 hover:bg-gray-100 rounded"
@@ -96,10 +96,10 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
                           </div>
                         </div>
 
-                        <div className="flex justify-between items-center py-1 border-b border-gray-200">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-gray-200 gap-1">
                           <span className="text-gray-600 uppercase">ALIAS</span>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold">{BANK_INFO.alias}</span>
+                            <span className="font-mono font-semibold break-all">{BANK_INFO.alias}</span>
                             <button
                               onClick={() => copyToClipboard(BANK_INFO.alias, "ALIAS")}
                               className="p-1 hover:bg-gray-100 rounded"

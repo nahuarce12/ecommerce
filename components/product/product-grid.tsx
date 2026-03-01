@@ -14,7 +14,7 @@ export function ProductGrid({ products }: ProductGridProps) {
        - Change gap-X to adjust spacing between cards
        - Current setup makes cards smaller/more compact
     */
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 bg-white">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2 md:gap-4 px-2 md:px-4 bg-white">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}

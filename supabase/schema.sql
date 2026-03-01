@@ -42,6 +42,15 @@ create table public.products (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Create product_sizes table (per-size stock, optional)
+create table public.product_sizes (
+  id uuid default uuid_generate_v4() primary key,
+  product_id uuid references public.products(id) on delete cascade not null,
+  size_label text not null,
+  stock integer not null default 0,
+  unique(product_id, size_label)
+);
+
 -- Create orders table
 create table public.orders (
   id uuid default uuid_generate_v4() primary key,
@@ -75,6 +84,7 @@ create table public.order_items (
 alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
 alter table public.products enable row level security;
+alter table public.product_sizes enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
@@ -104,6 +114,22 @@ create policy "Admins can insert categories"
 
 create policy "Admins can update categories"
   on categories for update
+  using ( exists ( select 1 from profiles where id = auth.uid() and role = 'admin' ) );
+
+-- Product sizes: Everyone can view, only admins can manage
+create policy "Product sizes are viewable by everyone"
+  on product_sizes for select using ( true );
+
+create policy "Admins can insert product sizes"
+  on product_sizes for insert
+  with check ( exists ( select 1 from profiles where id = auth.uid() and role = 'admin' ) );
+
+create policy "Admins can update product sizes"
+  on product_sizes for update
+  using ( exists ( select 1 from profiles where id = auth.uid() and role = 'admin' ) );
+
+create policy "Admins can delete product sizes"
+  on product_sizes for delete
   using ( exists ( select 1 from profiles where id = auth.uid() and role = 'admin' ) );
 
 -- Products: Everyone can view, only admins can insert/update
@@ -182,16 +208,60 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Function to sync product total stock from product_sizes
+create or replace function public.sync_product_total_stock()
+returns trigger as $$
+declare
+  target_product_id uuid;
+begin
+  if TG_OP = 'DELETE' then
+    target_product_id := OLD.product_id;
+  else
+    target_product_id := NEW.product_id;
+  end if;
+
+  update public.products
+  set stock = coalesce((
+    select sum(ps.stock) from public.product_sizes ps where ps.product_id = target_product_id
+  ), 0)
+  where id = target_product_id;
+
+  if TG_OP = 'DELETE' then
+    return OLD;
+  end if;
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_product_sizes_change
+  after insert or update or delete on public.product_sizes
+  for each row
+  execute procedure public.sync_product_total_stock();
+
 -- Function to restore stock when order is cancelled
 create or replace function public.restore_stock_on_cancel()
 returns trigger as $$
 begin
   if NEW.status = 'cancelled' and OLD.status != 'cancelled' then
+    update public.product_sizes
+    set stock = product_sizes.stock + oi.quantity
+    from public.order_items oi
+    where product_sizes.product_id = oi.product_id
+      and product_sizes.size_label = oi.size
+      and oi.order_id = NEW.id
+      and oi.size is not null
+      and oi.size != 'ÚNICO';
+
     update public.products
     set stock = products.stock + oi.quantity
     from public.order_items oi
     where products.id = oi.product_id
-      and oi.order_id = NEW.id;
+      and oi.order_id = NEW.id
+      and (oi.size is null or oi.size = 'ÚNICO')
+      and not exists (
+        select 1 from public.product_sizes ps
+        where ps.product_id = oi.product_id
+      );
   end if;
   return NEW;
 end;
@@ -227,17 +297,29 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Function to decrement product stock
-create or replace function public.decrement_stock(product_id uuid, quantity integer)
+-- Function to decrement product stock (supports per-size stock)
+create or replace function public.decrement_stock(product_id uuid, quantity integer, size_label text default null)
 returns void as $$
 begin
-  update public.products
-  set stock = stock - quantity
-  where id = product_id
-    and stock >= quantity;
-  
-  if not found then
-    raise exception 'Insufficient stock for product %', product_id;
+  if size_label is not null and size_label != 'ÚNICO' then
+    update public.product_sizes
+    set stock = product_sizes.stock - quantity
+    where product_sizes.product_id = decrement_stock.product_id
+      and product_sizes.size_label = decrement_stock.size_label
+      and product_sizes.stock >= quantity;
+
+    if not found then
+      raise exception 'Insufficient stock for product % size %', product_id, size_label;
+    end if;
+  else
+    update public.products
+    set stock = stock - quantity
+    where id = product_id
+      and stock >= quantity;
+
+    if not found then
+      raise exception 'Insufficient stock for product %', product_id;
+    end if;
   end if;
 end;
 $$ language plpgsql security definer;

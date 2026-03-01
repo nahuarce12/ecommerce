@@ -54,7 +54,7 @@ export default function ProductsPage() {
     const [productsRes, categoriesRes] = await Promise.all([
       supabase
         .from("products")
-        .select("*, categories(name)")
+        .select("*, categories(name), product_sizes(*)")
         .order("created_at", { ascending: false }),
       supabase.from("categories").select("*").order("name"),
     ]);
@@ -103,7 +103,7 @@ export default function ProductsPage() {
       name: `${product.name} (Copy)`,
       slug: `${product.slug}-copy`,
     };
-    setSelectedProduct(duplicate as Product);
+    setSelectedProduct(duplicate as unknown as Product);
     setProductDialogOpen(true);
   };
 
@@ -198,7 +198,7 @@ export default function ProductsPage() {
       )}
 
       {/* Products Table */}
-      <div className="border">
+      <div className="border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -254,9 +254,25 @@ export default function ProductsPage() {
                 <TableCell className="uppercase text-xs">{product.brand}</TableCell>
                 <TableCell className="text-xs">${product.price}</TableCell>
                 <TableCell className="text-xs">
-                  <span className={product.stock < 5 ? "text-destructive font-bold" : ""}>
-                    {product.stock}
-                  </span>
+                  {(product as any).product_sizes && (product as any).product_sizes.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {(product as any).product_sizes.map((ps: any) => (
+                        <div key={ps.id} className="flex gap-1">
+                          <span className="font-medium uppercase">{ps.size_label}:</span>
+                          <span className={ps.stock < 5 ? "text-destructive font-bold" : ""}>
+                            {ps.stock}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t mt-1 pt-1 text-muted-foreground">
+                        Total: {product.stock}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className={product.stock < 5 ? "text-destructive font-bold" : ""}>
+                      {product.stock}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="uppercase text-xs">
                   {(product as any).categories?.name || "-"}

@@ -41,13 +41,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile for payer info
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
       accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -81,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get app URL with proper validation
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://flhlb3th-3000.brs.devtunnels.ms";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://2q4d6smw-3000.brs.devtunnels.ms";
     
     if (!appUrl) {
       return NextResponse.json(
@@ -93,20 +86,9 @@ export async function POST(request: NextRequest) {
     console.log("Using app URL:", appUrl);
     console.log("Creating preference for order:", orderId);
 
-    // Create preference
+    // Create preference - NO enviar payer info para evitar pre-autenticación en sandbox
     const preferenceData = {
       items,
-      payer: {
-        name: profile?.full_name || undefined,
-        email: user.email || undefined,
-        phone: {
-          number: profile?.phone || undefined,
-        },
-        address: {
-          street_name: profile?.address_line1 || undefined,
-          zip_code: profile?.postal_code || undefined,
-        }
-      },
       back_urls: {
         success: `${appUrl}/checkout/success/${orderId}?status=approved`,
         failure: `${appUrl}/checkout/success/${orderId}?status=failure`,
@@ -116,12 +98,18 @@ export async function POST(request: NextRequest) {
       notification_url: `${appUrl}/api/mercadopago/webhook`,
       external_reference: orderId,
       statement_descriptor: "SUPPLY STORE",
-      expires: true,
-      expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48 hours
     };
 
+    console.log("Preference data:", JSON.stringify(preferenceData, null, 2));
+
     const response = await preference.create({ body: preferenceData });
+
+    console.log("Preference response:", {
+      id: response.id,
+      init_point: response.init_point,
+      sandbox_init_point: response.sandbox_init_point,
+      date_created: response.date_created,
+    });
 
     // Update order with preference_id
     const { error: updateError } = await supabase
@@ -135,11 +123,13 @@ export async function POST(request: NextRequest) {
       console.error("Error updating order with preference_id:", updateError);
     }
 
+    const initPoint = response.sandbox_init_point || response.init_point;
+    console.log("Redirecting to:", initPoint);
+
     return NextResponse.json({
       success: true,
       preferenceId: response.id,
-      initPoint: response.init_point,
-      sandboxInitPoint: response.sandbox_init_point,
+      initPoint,
     });
 
   } catch (error) {

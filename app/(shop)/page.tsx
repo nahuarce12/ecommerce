@@ -18,7 +18,7 @@ export default function ShopPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from("products")
-        .select("*, categories(slug)")
+        .select("*, categories(slug), product_sizes(*)")
         .order("created_at", { ascending: false });
 
       if (data) {
