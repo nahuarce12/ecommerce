@@ -38,7 +38,7 @@ export default function UsersPage() {
     // First get all profiles
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, full_name, avatar_url, role, created_at")
       .order("created_at", { ascending: false });
 
     if (profiles) {

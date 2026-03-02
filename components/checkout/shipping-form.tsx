@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { createClient } from "@/lib/supabase/client";
 import { validateArgentinePhone, formatArgentinePhone, validateArgentinePostalCode, formatArgentinePostalCode } from "@/lib/validators";
 import { hasCompleteShippingInfo } from "@/lib/shipping-helpers";
 import { ARGENTINA_PROVINCES, type Profile } from "@/types";
@@ -36,6 +35,9 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
   const [errors, setErrors] = useState({
     phone: "",
     postal_code: "",
+    address_line1: "",
+    city: "",
+    state_province: "",
   });
 
   useEffect(() => {
@@ -97,62 +99,77 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
   };
 
   const handleSave = async () => {
+    const nextErrors = {
+      phone: "",
+      postal_code: "",
+      address_line1: "",
+      city: "",
+      state_province: "",
+    };
+
     // Validate required fields
     if (!formData.phone || !formData.address_line1 || !formData.city || !formData.state_province || !formData.postal_code) {
-      toast.error("COMPLETA TODOS LOS CAMPOS REQUERIDOS");
+      if (!formData.phone) nextErrors.phone = "El teléfono es requerido";
+      if (!formData.address_line1) nextErrors.address_line1 = "La dirección es requerida";
+      if (!formData.city) nextErrors.city = "La ciudad es requerida";
+      if (!formData.state_province) nextErrors.state_province = "La provincia es requerida";
+      if (!formData.postal_code) nextErrors.postal_code = "El código postal es requerido";
+      setErrors(nextErrors);
+      toast.error("REVISÁ LOS CAMPOS MARCADOS");
       return;
     }
 
     // Validate phone
     const phoneValidation = validateArgentinePhone(formData.phone);
     if (!phoneValidation.valid) {
-      setErrors({ ...errors, phone: phoneValidation.error || "" });
+      setErrors({ ...nextErrors, phone: phoneValidation.error || "" });
       return;
     }
 
     // Validate postal code
     const postalValidation = validateArgentinePostalCode(formData.postal_code);
     if (!postalValidation.valid) {
-      setErrors({ ...errors, postal_code: postalValidation.error || "" });
+      setErrors({ ...nextErrors, postal_code: postalValidation.error || "" });
       return;
     }
+
+    setErrors(nextErrors);
 
     setSaving(true);
 
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const response = await fetch("/api/account/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requireShipping: true,
+          phone: formData.phone,
+          address_line1: formData.address_line1,
+          address_line2: formData.address_line2,
+          city: formData.city,
+          state_province: formData.state_province,
+          postal_code: formData.postal_code,
+        }),
+      });
 
-      if (!user) {
-        toast.error("DEBES INICIAR SESIÓN");
-        return;
+      const result = await response.json();
+      if (!response.ok) {
+        if (result?.fields) {
+          setErrors({
+            ...nextErrors,
+            phone: result.fields.phone || "",
+            postal_code: result.fields.postal_code || "",
+            address_line1: result.fields.address_line1 || "",
+            city: result.fields.city || "",
+            state_province: result.fields.state_province || "",
+          });
+        }
+        throw new Error(result?.error || "ERROR AL GUARDAR LA DIRECCIÓN");
       }
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          phone: formData.phone,
-          address_line1: formData.address_line1,
-          address_line2: formData.address_line2,
-          city: formData.city,
-          state_province: formData.state_province,
-          postal_code: formData.postal_code,
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
       // Update local profile state
-      if (profile && onProfileUpdate) {
-        onProfileUpdate({
-          ...profile,
-          phone: formData.phone,
-          address_line1: formData.address_line1,
-          address_line2: formData.address_line2,
-          city: formData.city,
-          state_province: formData.state_province,
-          postal_code: formData.postal_code,
-        });
+      if (result?.profile && onProfileUpdate) {
+        onProfileUpdate(result.profile);
       }
 
       toast.success("DIRECCIÓN GUARDADA");
@@ -160,7 +177,7 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
       onComplete(formData.city, formData.state_province);
     } catch (error) {
       console.error("Error saving shipping:", error);
-      toast.error("ERROR AL GUARDAR LA DIRECCIÓN");
+      toast.error(error instanceof Error ? error.message : "ERROR AL GUARDAR LA DIRECCIÓN");
     } finally {
       setSaving(false);
     }
@@ -233,8 +250,11 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
                 value={formData.address_line1}
                 onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
                 placeholder="CALLE 1234"
-                className="uppercase"
+                className={`uppercase ${errors.address_line1 ? "border-red-500" : ""}`}
               />
+              {errors.address_line1 && (
+                <p className="text-xs text-red-600 mt-1">{errors.address_line1}</p>
+              )}
             </div>
 
             <div>
@@ -256,8 +276,11 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="ROSARIO"
-                  className="uppercase"
+                  className={`uppercase ${errors.city ? "border-red-500" : ""}`}
                 />
+                {errors.city && (
+                  <p className="text-xs text-red-600 mt-1">{errors.city}</p>
+                )}
               </div>
 
               <div>
@@ -281,7 +304,12 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
               <Label htmlFor="state_province" className="uppercase text-xs">PROVINCIA *</Label>
               <Select
                 value={formData.state_province}
-                onValueChange={(value) => setFormData({ ...formData, state_province: value })}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, state_province: value });
+                  if (errors.state_province) {
+                    setErrors({ ...errors, state_province: "" });
+                  }
+                }}
               >
                 <SelectTrigger className="uppercase">
                   <SelectValue placeholder="SELECCIONA UNA PROVINCIA" />
@@ -294,6 +322,9 @@ export function ShippingForm({ profile, onComplete, onProfileUpdate }: ShippingF
                   ))}
                 </SelectContent>
               </Select>
+              {errors.state_province && (
+                <p className="text-xs text-red-600 mt-1">{errors.state_province}</p>
+              )}
             </div>
 
             <Button

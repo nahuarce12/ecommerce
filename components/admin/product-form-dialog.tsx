@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Product, Category } from "@/types";
 import { useAdminStore } from "@/store/admin-store";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SizeStock {
   label: string;
@@ -52,6 +52,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
   const [hasSizes, setHasSizes] = useState(false);
   const [sizeStocks, setSizeStocks] = useState<SizeStock[]>([]);
   const [loading, setLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (selectedProduct) {
@@ -98,6 +99,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
     });
     setHasSizes(false);
     setSizeStocks([]);
+    setFormErrors({});
   };
 
   const generateSlug = (name: string) => {
@@ -136,88 +138,44 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFormErrors({});
 
-    const supabase = createClient();
-
-    const sizesArray = hasSizes
-      ? sizeStocks.map((s) => s.label.trim()).filter(Boolean)
-      : [];
-
-    const totalStock = hasSizes ? getTotalSizeStock() : parseInt(formData.stock);
-
-    const productData = {
+    const payload = {
+      id: selectedProduct?.id,
       name: formData.name,
       slug: formData.slug,
-      description: formData.description || null,
-      price: parseFloat(formData.price),
+      description: formData.description,
+      price: formData.price,
       brand: formData.brand,
-      stock: totalStock,
+      stock: hasSizes ? getTotalSizeStock() : formData.stock,
       category_id: formData.category_id || null,
       images: formData.images,
-      sizes: sizesArray,
       colors: formData.colors.split(",").map((c) => c.trim()).filter(Boolean),
+      sizeStocks: hasSizes
+        ? sizeStocks
+            .filter((s) => s.label.trim())
+            .map((s) => ({ label: s.label.trim(), stock: s.stock }))
+        : [],
     };
 
-    let error;
-    let productId: string | undefined;
+    const response = await fetch("/api/admin/products/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    if (selectedProduct?.id) {
-      // Update product
-      ({ error } = await supabase
-        .from("products")
-        .update(productData)
-        .eq("id", selectedProduct.id));
-      productId = selectedProduct.id;
-    } else {
-      // Insert product
-      const { data, error: insertError } = await supabase
-        .from("products")
-        .insert([productData])
-        .select("id")
-        .single();
-      error = insertError;
-      productId = data?.id;
-    }
-
-    if (error || !productId) {
+    const result = await response.json();
+    if (!response.ok) {
       setLoading(false);
-      alert("Failed to save product: " + (error?.message || "Unknown error"));
-      console.error(error);
+      if (result?.fields) {
+        setFormErrors(result.fields);
+      }
+      toast.error(result?.error || "ERROR AL GUARDAR PRODUCTO");
       return;
     }
 
-    // Handle product_sizes
-    if (hasSizes) {
-      // Delete existing sizes
-      await supabase.from("product_sizes").delete().eq("product_id", productId);
-
-      // Insert new sizes
-      const sizeRows = sizeStocks
-        .filter((s) => s.label.trim())
-        .map((s) => ({
-          product_id: productId!,
-          size_label: s.label.trim().toUpperCase(),
-          stock: parseInt(s.stock) || 0,
-        }));
-
-      if (sizeRows.length > 0) {
-        const { error: sizeError } = await supabase
-          .from("product_sizes")
-          .insert(sizeRows);
-
-        if (sizeError) {
-          setLoading(false);
-          alert("Error saving sizes: " + sizeError.message);
-          console.error(sizeError);
-          return;
-        }
-      }
-    } else {
-      // Remove any existing product_sizes if switching to no-sizes
-      await supabase.from("product_sizes").delete().eq("product_id", productId);
-    }
-
     setLoading(false);
+    toast.success(selectedProduct ? "PRODUCTO ACTUALIZADO" : "PRODUCTO CREADO");
     setProductDialogOpen(false);
     setSelectedProduct(null);
     resetForm();
@@ -253,8 +211,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 onChange={(e) => handleNameChange(e.target.value)}
                 required
                 placeholder="Supreme Box Logo Hoodie"
-                className="uppercase"
+                className={`uppercase ${formErrors.name ? "border-red-500" : ""}`}
               />
+              {formErrors.name && <p className="text-xs text-red-600 mt-1">{formErrors.name}</p>}
             </div>
 
             <div className="col-span-2">
@@ -266,7 +225,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                 required
                 placeholder="supreme-box-logo-hoodie"
+                className={formErrors.slug ? "border-red-500" : ""}
               />
+              {formErrors.slug && <p className="text-xs text-red-600 mt-1">{formErrors.slug}</p>}
             </div>
 
             <div className="col-span-2">
@@ -291,8 +252,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                 required
                 placeholder="Supreme"
-                className="uppercase"
+                className={`uppercase ${formErrors.brand ? "border-red-500" : ""}`}
               />
+              {formErrors.brand && <p className="text-xs text-red-600 mt-1">{formErrors.brand}</p>}
             </div>
 
             <div>
@@ -327,7 +289,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 required
                 placeholder="299.99"
+                className={formErrors.price ? "border-red-500" : ""}
               />
+              {formErrors.price && <p className="text-xs text-red-600 mt-1">{formErrors.price}</p>}
             </div>
 
             {/* Sizes toggle */}
@@ -362,7 +326,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                   onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                   required
                   placeholder="10"
+                  className={formErrors.stock ? "border-red-500" : ""}
                 />
+                {formErrors.stock && <p className="text-xs text-red-600 mt-1">{formErrors.stock}</p>}
               </div>
             )}
 
@@ -404,6 +370,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                     </Button>
                   </div>
                 ))}
+                {formErrors.sizeStocks && <p className="text-xs text-red-600 mt-1">{formErrors.sizeStocks}</p>}
                 <Button
                   type="button"
                   variant="outline"
@@ -425,8 +392,9 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 value={formData.colors}
                 onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
                 placeholder="Black, White, Grey"
-                className="uppercase"
+                className={`uppercase ${formErrors.colors ? "border-red-500" : ""}`}
               />
+              {formErrors.colors && <p className="text-xs text-red-600 mt-1">{formErrors.colors}</p>}
             </div>
 
             <div className="col-span-2">

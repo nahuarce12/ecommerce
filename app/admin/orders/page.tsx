@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -59,7 +60,13 @@ export default function OrdersPage() {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [trackingError, setTrackingError] = useState("");
   const trackingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateOrderInState = useCallback((orderId: string, updates: Partial<Order>) => {
+    setOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, ...updates } : order)));
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -79,7 +86,7 @@ export default function OrdersPage() {
     // Get orders
     const { data, error } = await supabase
       .from("orders")
-      .select("*")
+      .select("id, user_id, status, payment_status, total, shipping_cost, shipping_address, payment_method, tracking_number, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -112,7 +119,7 @@ export default function OrdersPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("order_items")
-      .select("*")
+      .select("id, product_name, size, color, quantity, price_at_purchase")
       .eq("order_id", orderId);
 
     if (data) setOrderItems(data);
@@ -133,19 +140,24 @@ export default function OrdersPage() {
       body: JSON.stringify({ orderId, newStatus }),
     });
 
+    const result = await res.json();
+
     setUpdatingStatus(false);
 
     if (!res.ok) {
-      alert("Failed to update status");
+      toast.error(result?.error || "ERROR AL ACTUALIZAR ESTADO");
     } else {
-      fetchOrders();
+      updateOrderInState(orderId, { status: newStatus });
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
+      toast.success("ESTADO DE ORDEN ACTUALIZADO");
     }
   };
 
   const handleTrackingUpdate = useCallback((orderId: string, trackingNumber: string) => {
+    setTrackingError("");
+
     if (selectedOrder?.id === orderId) {
       setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber });
     }
@@ -161,28 +173,38 @@ export default function OrdersPage() {
         body: JSON.stringify({ orderId, trackingNumber }),
       });
 
+      const result = await res.json();
+
       if (!res.ok) {
-        alert("Failed to update tracking number");
+        const errorMessage = result?.error || "ERROR AL ACTUALIZAR TRACKING";
+        setTrackingError(errorMessage);
+        toast.error(errorMessage);
       } else {
-        fetchOrders();
+        updateOrderInState(orderId, { tracking_number: trackingNumber });
       }
     }, 800);
-  }, [selectedOrder]);
+  }, [selectedOrder, updateOrderInState]);
 
   const handlePaymentStatusUpdate = async (orderId: string, newPaymentStatus: string) => {
+    setUpdatingPayment(true);
+
     const res = await fetch("/api/admin/orders/update-payment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId, newPaymentStatus }),
     });
 
+    const result = await res.json();
+    setUpdatingPayment(false);
+
     if (!res.ok) {
-      alert("Failed to update payment status");
+      toast.error(result?.error || "ERROR AL ACTUALIZAR ESTADO DE PAGO");
     } else {
-      fetchOrders();
+      updateOrderInState(orderId, { payment_status: newPaymentStatus });
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, payment_status: newPaymentStatus });
       }
+      toast.success("ESTADO DE PAGO ACTUALIZADO");
     }
   };
 
@@ -358,6 +380,7 @@ export default function OrdersPage() {
                     <Select
                       value={selectedOrder.payment_status}
                       onValueChange={(val) => handlePaymentStatusUpdate(selectedOrder.id, val)}
+                      disabled={updatingPayment}
                     >
                       <SelectTrigger className="uppercase">
                         <SelectValue />
@@ -377,8 +400,11 @@ export default function OrdersPage() {
                       value={selectedOrder.tracking_number || ""}
                       onChange={(e) => handleTrackingUpdate(selectedOrder.id, e.target.value)}
                       placeholder="Enter tracking number"
-                      className="font-mono"
+                      className={`font-mono ${trackingError ? "border-red-500" : ""}`}
                     />
+                    {trackingError && (
+                      <p className="text-xs text-red-600 mt-1 uppercase">{trackingError}</p>
+                    )}
                   </div>
                 </div>
               </div>

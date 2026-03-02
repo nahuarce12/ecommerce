@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2 } from "lucide-react";
+import { isValidEmail, safeRedirectPath } from "@/lib/validators";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,16 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setError("EMAIL INVÁLIDO");
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      setError("LA CONTRASEÑA DEBE TENER AL MENOS 8 CARACTERES");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -39,7 +50,7 @@ export default function LoginPage() {
       setLoading(false);
     } else {
       const redirectPath = searchParams.get("redirect") || "/";
-      const safeRedirect = redirectPath.startsWith("/") ? redirectPath : "/";
+      const safeRedirect = safeRedirectPath(redirectPath);
       window.location.assign(safeRedirect);
     }
   };
@@ -159,5 +170,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

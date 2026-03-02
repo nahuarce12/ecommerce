@@ -54,9 +54,9 @@ export default function ProductsPage() {
     const [productsRes, categoriesRes] = await Promise.all([
       supabase
         .from("products")
-        .select("*, categories(name), product_sizes(*)")
+        .select("id, name, slug, description, price, category_id, brand, stock, images, sizes, colors, created_at, categories(name), product_sizes(id, product_id, size_label, stock)")
         .order("created_at", { ascending: false }),
-      supabase.from("categories").select("*").order("name"),
+      supabase.from("categories").select("id, name, slug, description, created_at").order("name"),
     ]);
 
     if (productsRes.data) setProducts(productsRes.data as any);

@@ -84,50 +84,29 @@ export default function CheckoutPage() {
   useEffect(() => {
     const validateStock = async () => {
       if (items.length === 0) return;
-      
+
       setCheckingStock(true);
-      const supabase = createClient();
-      const issues: StockIssue[] = [];
 
-      for (const item of items) {
-        let availableStock: number | null = null;
+      try {
+        const response = await fetch("/api/orders/validate-stock", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        });
 
-        if (item.size && item.size !== 'ÚNICO') {
-          const { data: sizeData } = await supabase
-            .from("product_sizes")
-            .select("stock")
-            .eq("product_id", item.product.id)
-            .eq("size_label", item.size)
-            .single();
+        const result = await response.json();
 
-          if (sizeData) {
-            availableStock = sizeData.stock;
-          }
+        if (!response.ok) {
+          throw new Error(result.error || "ERROR VALIDANDO STOCK");
         }
 
-        if (availableStock === null) {
-          const { data: product } = await supabase
-            .from("products")
-            .select("stock")
-            .eq("id", item.product.id)
-            .single();
-          availableStock = product?.stock ?? 0;
-        }
-
-        if (availableStock !== null && availableStock < item.quantity) {
-          issues.push({
-            productId: item.product.id,
-            productName: item.product.name,
-            requestedQty: item.quantity,
-            availableStock: availableStock ?? 0,
-            size: item.size,
-            color: item.color,
-          });
-        }
+        setStockIssues(Array.isArray(result.issues) ? (result.issues as StockIssue[]) : []);
+      } catch (error) {
+        console.error("Error validating stock:", error);
+        setStockIssues([]);
+      } finally {
+        setCheckingStock(false);
       }
-
-      setStockIssues(issues);
-      setCheckingStock(false);
     };
 
     if (!loading) {

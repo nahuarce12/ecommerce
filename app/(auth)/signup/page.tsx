@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { validateSignupInput } from "@/lib/validators";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -17,16 +18,25 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateSignupInput({ email, password, fullName });
+    if (!validation.success) {
+      const firstFieldError = Object.values(validation.fields)[0] || validation.error;
+      setError(firstFieldError);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
+    const payload = validation.data;
+
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: payload.email,
+      password: payload.password,
       options: {
         data: {
-          full_name: fullName,
+          full_name: payload.fullName,
         },
       },
     });
@@ -38,7 +48,7 @@ export default function SignupPage() {
       fetch("/api/auth/welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, fullName }),
+        body: JSON.stringify({ email: payload.email, fullName: payload.fullName }),
       }).catch(() => {});
       router.push("/login?registered=true");
     }
@@ -137,7 +147,7 @@ export default function SignupPage() {
                 required
                 className="w-full"
                 placeholder="••••••••"
-                minLength={6}
+                minLength={8}
               />
             </div>
           </div>

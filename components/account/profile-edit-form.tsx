@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Profile, ARGENTINA_PROVINCES } from "@/types";
-import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,33 +95,38 @@ export function ProfileEditForm({ profile, onUpdate }: ProfileEditFormProps) {
     setSaving(true);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: formData.full_name || null,
-          phone: formData.phone || null,
-          address_line1: formData.address_line1 || null,
-          address_line2: formData.address_line2 || null,
-          city: formData.city || null,
-          state_province: formData.state_province || null,
-          postal_code: formData.postal_code || null,
-        })
-        .eq("id", profile.id)
-        .select()
-        .single();
+      const response = await fetch("/api/account/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requireShipping: false,
+          full_name: formData.full_name,
+          phone: formData.phone,
+          address_line1: formData.address_line1,
+          address_line2: formData.address_line2,
+          city: formData.city,
+          state_province: formData.state_province,
+          postal_code: formData.postal_code,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) {
+        if (result?.fields) {
+          setErrors((prev) => ({ ...prev, ...result.fields }));
+        }
+        throw new Error(result?.error || "No se pudo actualizar tu perfil");
+      }
 
       toast.success("PERFIL ACTUALIZADO", {
         description: "Tus datos se guardaron correctamente",
       });
 
-      onUpdate(data);
+      onUpdate(result.profile);
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("ERROR AL GUARDAR", {
-        description: "No se pudo actualizar tu perfil",
+        description: error instanceof Error ? error.message : "No se pudo actualizar tu perfil",
       });
     } finally {
       setSaving(false);

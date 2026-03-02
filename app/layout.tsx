@@ -32,11 +32,6 @@ export default function RootLayout({
         {children}
         <CartSheet />
         <Toaster position="top-center" />
-        <script
-          src="https://upload-widget.cloudinary.com/global/all.js"
-          type="text/javascript"
-          async
-        />
       </body>
     </html>
   );

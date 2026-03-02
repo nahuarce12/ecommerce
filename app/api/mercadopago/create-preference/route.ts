@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
+import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
 
 function shouldExcludeAccountMoney(accessToken: string): boolean {
   const override = process.env.MP_EXCLUDE_ACCOUNT_MONEY?.trim().toLowerCase();
@@ -48,6 +49,7 @@ function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const ip = getRequestIp(request.headers);
     const accessToken = process.env.MP_ACCESS_TOKEN;
 
     if (!accessToken) {
@@ -63,6 +65,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "NO AUTENTICADO" },
         { status: 401 }
+      );
+    }
+
+    const rateLimit = checkRateLimit(`mp-preference:${user.id}:${ip}`, 12, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "DEMASIADAS SOLICITUDES" },
+        { status: 429 }
       );
     }
 
