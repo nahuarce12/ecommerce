@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { sendNotificationEmail, getUserEmail } from "@/lib/email";
+import { isUuid, isValidOrderStatus } from "@/lib/validators";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,9 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "NO AUTORIZADO" }, { status: 403 });
     }
 
-    const { orderId, newStatus } = await request.json();
+    const body = await request.json();
+    const orderId = typeof body?.orderId === "string" ? body.orderId : "";
+    const newStatus = typeof body?.newStatus === "string" ? body.newStatus : "";
+
     if (!orderId || !newStatus) {
       return NextResponse.json({ error: "DATOS INCOMPLETOS" }, { status: 400 });
+    }
+
+    if (!isUuid(orderId) || !isValidOrderStatus(newStatus)) {
+      return NextResponse.json({ error: "DATOS INVÁLIDOS" }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
@@ -50,7 +58,7 @@ export async function POST(request: NextRequest) {
     if (newStatus === "shipped") {
       const email = await getUserEmail(order.user_id);
       if (email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
         sendNotificationEmail("order_shipped", email, {
           orderId: order.id,
           trackingNumber: order.tracking_number,

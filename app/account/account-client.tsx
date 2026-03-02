@@ -82,8 +82,38 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-xs uppercase text-muted-foreground">Loading profile...</p>
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="w-full max-w-md border-2 p-6 space-y-4 text-center">
+          <h1 className="text-lg font-bold uppercase tracking-tight">Perfil no disponible</h1>
+          <p className="text-xs uppercase text-muted-foreground leading-relaxed">
+            No pudimos cargar tu perfil en este momento. Intentá nuevamente en unos segundos.
+          </p>
+          <div className="text-xs text-muted-foreground">{user.email}</div>
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              className="uppercase text-xs"
+              onClick={() => router.refresh()}
+            >
+              Reintentar
+            </Button>
+            <Button
+              variant="outline"
+              className="uppercase text-xs"
+              onClick={() => router.push("/")}
+            >
+              Ir a tienda
+            </Button>
+          </div>
+          <Separator />
+          <Button
+            variant="destructive"
+            className="uppercase text-xs w-full"
+            onClick={handleLogout}
+          >
+            Cerrar sesión
+          </Button>
+        </div>
       </div>
     );
   }

@@ -2,12 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { sendNotificationEmail, getUserEmail } from "@/lib/email";
+import { verifyMercadoPagoWebhookSecurity } from "@/lib/webhook-security";
+
+type WebhookPayload = {
+  type?: string;
+  topic?: string;
+  data?: { id?: string | number };
+  resource?: string | number;
+};
 
 export async function POST(request: NextRequest) {
   try {
+    const accessToken = process.env.MP_ACCESS_TOKEN;
+    if (!accessToken) {
+      return NextResponse.json({ error: "MP_ACCESS_TOKEN NO CONFIGURADO" }, { status: 500 });
+    }
+
+    const webhookSecret = process.env.MP_WEBHOOK_SECRET?.trim();
+
     // Get notification data from MercadoPago
-    const body = await request.json();
+    const body = (await request.json()) as WebhookPayload;
     console.log("MercadoPago webhook received:", body);
+
+    if (webhookSecret) {
+      const securityCheck = verifyMercadoPagoWebhookSecurity({
+        signatureHeader: request.headers.get("x-signature"),
+        requestIdHeader: request.headers.get("x-request-id"),
+        dataId: body.data?.id ?? body.resource,
+        secret: webhookSecret,
+      });
+
+      if (!securityCheck.valid) {
+        console.error("MercadoPago webhook rejected:", securityCheck.reason);
+        return NextResponse.json({ error: "INVALID SIGNATURE" }, { status: 401 });
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      console.error("MercadoPago webhook rejected: MP_WEBHOOK_SECRET missing in production");
+      return NextResponse.json({ error: "WEBHOOK SECRET NOT CONFIGURED" }, { status: 500 });
+    }
 
     // MercadoPago sends notifications in different formats
     // Format 1 (old): { resource: "123", topic: "payment" }
@@ -32,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
-      accessToken: process.env.MP_ACCESS_TOKEN!,
+      accessToken,
       options: {
         timeout: 5000,
       }
@@ -115,7 +147,7 @@ export async function POST(request: NextRequest) {
       // Send payment approved email
       const email = await getUserEmail(order.user_id);
       if (email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
         sendNotificationEmail("payment_approved", email, {
           orderId: order.id,
           total: order.total,

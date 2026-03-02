@@ -2,9 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 
+function shouldExcludeAccountMoney(accessToken: string): boolean {
+  const override = process.env.MP_EXCLUDE_ACCOUNT_MONEY?.trim().toLowerCase();
+  if (override === "true") return true;
+  if (override === "false") return false;
+
+  if (accessToken.startsWith("TEST-")) {
+    return true;
+  }
+
+  return process.env.NODE_ENV !== "production";
+}
+
+function getAppUrl(request: NextRequest): string {
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configuredAppUrl) {
+    return configuredAppUrl;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_APP_URL es obligatorio en producción");
+  }
+
+  return new URL(request.url).origin;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const accessToken = process.env.MP_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: "MP_ACCESS_TOKEN NO CONFIGURADO" },
+        { status: 500 }
+      );
+    }
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -43,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
-      accessToken: process.env.MP_ACCESS_TOKEN!,
+      accessToken,
       options: {
         timeout: 5000,
       }
@@ -73,15 +106,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get app URL with proper validation
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://2q4d6smw-3000.brs.devtunnels.ms";
-    
-    if (!appUrl) {
-      return NextResponse.json(
-        { error: "CONFIGURACIÓN DE URL NO ENCONTRADA" },
-        { status: 500 }
-      );
-    }
+    const appUrl = getAppUrl(request);
+    const excludeAccountMoney = shouldExcludeAccountMoney(accessToken);
 
     console.log("Using app URL:", appUrl);
     console.log("Creating preference for order:", orderId);
@@ -98,6 +124,13 @@ export async function POST(request: NextRequest) {
       notification_url: `${appUrl}/api/mercadopago/webhook`,
       external_reference: orderId,
       statement_descriptor: "SUPPLY STORE",
+      ...(excludeAccountMoney
+        ? {
+            payment_methods: {
+              excluded_payment_methods: [{ id: "account_money" }],
+            },
+          }
+        : {}),
     };
 
     console.log("Preference data:", JSON.stringify(preferenceData, null, 2));

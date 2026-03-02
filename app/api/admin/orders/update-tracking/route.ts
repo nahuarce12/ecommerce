@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { isUuid, isValidTrackingNumber, sanitizeText } from "@/lib/validators";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,9 +21,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "NO AUTORIZADO" }, { status: 403 });
     }
 
-    const { orderId, trackingNumber } = await request.json();
+    const body = await request.json();
+    const orderId = typeof body?.orderId === "string" ? body.orderId : "";
+    const rawTrackingNumber = typeof body?.trackingNumber === "string" ? body.trackingNumber : "";
+
     if (!orderId) {
       return NextResponse.json({ error: "DATOS INCOMPLETOS" }, { status: 400 });
+    }
+
+    if (!isUuid(orderId)) {
+      return NextResponse.json({ error: "DATOS INVÁLIDOS" }, { status: 400 });
+    }
+
+    const trackingNumber = rawTrackingNumber ? sanitizeText(rawTrackingNumber, 120) : null;
+    if (trackingNumber && !isValidTrackingNumber(trackingNumber)) {
+      return NextResponse.json({ error: "TRACKING INVÁLIDO" }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();

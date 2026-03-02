@@ -20,6 +20,23 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Security Environment Variables
+
+Set these variables before running MercadoPago flows:
+
+```env
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+MP_ACCESS_TOKEN=TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MP_WEBHOOK_SECRET=xxxxxxxx
+MP_EXCLUDE_ACCOUNT_MONEY=true
+```
+
+- `NEXT_PUBLIC_APP_URL` is required in production for payment preference and callback URLs.
+- `MP_WEBHOOK_SECRET` is required in production to validate MercadoPago webhook signatures.
+- Use test credentials for sandbox tests and a buyer account different from the account used to create the preference.
+- `MP_EXCLUDE_ACCOUNT_MONEY=true` helps avoid sandbox wallet/account-money issues during test checkouts.
+- Do not hardcode credentials in scripts or route files.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -3,6 +3,34 @@ import { createClient } from "@/lib/supabase/server";
 import { calculateShipping } from "@/lib/shipping-calculator";
 import { formatShippingAddress } from "@/lib/shipping-helpers";
 import { sendNotificationEmail } from "@/lib/email";
+import { getEnabledPaymentMethods } from "@/lib/payment-methods";
+import { isUuid, sanitizeText } from "@/lib/validators";
+
+type CreateOrderItemPayload = {
+  product?: {
+    id?: string;
+    name?: string;
+    price?: number;
+  };
+  size?: string;
+  color?: string;
+  quantity?: number;
+};
+
+type ValidatedOrderItem = {
+  product: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  size: string;
+  color: string;
+  quantity: number;
+};
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,11 +47,21 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { paymentMethod, shippingCity, shippingProvince } = body;
+    const paymentMethod = typeof body?.paymentMethod === "string" ? body.paymentMethod : "";
+    const shippingCity = typeof body?.shippingCity === "string" ? sanitizeText(body.shippingCity, 120) : "";
+    const shippingProvince = typeof body?.shippingProvince === "string" ? sanitizeText(body.shippingProvince, 120) : "";
 
     if (!paymentMethod || !shippingCity || !shippingProvince) {
       return NextResponse.json(
         { error: "DATOS INCOMPLETOS" },
+        { status: 400 }
+      );
+    }
+
+    const enabledMethods = getEnabledPaymentMethods().map((method) => method.id);
+    if (!enabledMethods.includes(paymentMethod)) {
+      return NextResponse.json(
+        { error: "MÉTODO DE PAGO INVÁLIDO" },
         { status: 400 }
       );
     }
@@ -51,12 +89,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Get cart from request (we'll pass it from the client)
-    const { items } = body;
+    const items = Array.isArray(body?.items) ? (body.items as CreateOrderItemPayload[]) : [];
     if (!items || items.length === 0) {
       return NextResponse.json(
         { error: "CARRITO VACÍO" },
         { status: 400 }
       );
+    }
+
+    const validatedItems: ValidatedOrderItem[] = [];
+
+    for (const item of items) {
+      const productId = typeof item?.product?.id === "string" ? item.product.id : "";
+      const productName = typeof item?.product?.name === "string" ? item.product.name : "";
+      const productPrice = typeof item?.product?.price === "number" ? item.product.price : 0;
+      const size = typeof item?.size === "string" ? sanitizeText(item.size, 50) : "";
+      const color = typeof item?.color === "string" ? sanitizeText(item.color, 50) : "";
+      const quantity = item?.quantity;
+
+      if (!productId || !productName || !size || !color || !isPositiveInteger(quantity)) {
+        return NextResponse.json(
+          { error: "ITEMS INVÁLIDOS EN EL CARRITO" },
+          { status: 400 }
+        );
+      }
+
+      if (!isUuid(productId) || quantity > 50) {
+        return NextResponse.json(
+          { error: "ITEMS INVÁLIDOS EN EL CARRITO" },
+          { status: 400 }
+        );
+      }
+
+      validatedItems.push({
+        product: {
+          id: productId,
+          name: productName,
+          price: productPrice,
+        },
+        size,
+        color,
+        quantity,
+      });
     }
 
     // Calculate shipping
@@ -67,7 +141,7 @@ export async function POST(request: NextRequest) {
     let orderTotal = 0;
 
     // Validate stock for all items
-    for (const item of items) {
+    for (const item of validatedItems) {
       const { data: product, error: productError } = await supabase
         .from("products")
         .select("stock, price")
@@ -143,7 +217,7 @@ export async function POST(request: NextRequest) {
     // Create order items and update stock (skip stock decrement for MercadoPago)
     const shouldDecrementStock = paymentMethod !== "mercadopago";
 
-    for (const item of items) {
+    for (const item of validatedItems) {
       // Get current price
       const { data: product } = await supabase
         .from("products")
@@ -206,7 +280,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send order confirmation email (fire-and-forget)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     const { data: orderItems } = await supabase
       .from("order_items")
       .select("*")

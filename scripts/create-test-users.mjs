@@ -5,7 +5,7 @@
  * Uso: node scripts/create-test-users.mjs
  */
 
-const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "APP_USR-6808407939797-121817-99c48a3a60feb2e760d0828b970e70bd-3077234705";
+const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 
 async function createTestUser(description) {
   const response = await fetch("https://api.mercadopago.com/users/test_user", {
@@ -32,6 +32,10 @@ async function main() {
   console.log("=== Creando cuentas de prueba de MercadoPago ===\n");
 
   try {
+    if (!ACCESS_TOKEN) {
+      throw new Error("MP_ACCESS_TOKEN no está configurado en variables de entorno");
+    }
+
     console.log("1. Creando comprador de prueba...");
     const buyer = await createTestUser("Comprador de prueba");
     console.log("\n✅ COMPRADOR DE PRUEBA creado:");

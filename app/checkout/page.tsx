@@ -55,7 +55,7 @@ export default function CheckoutPage() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        router.push("/auth/login?redirect=/checkout");
+        router.push("/login?redirect=/checkout");
         return;
       }
 
@@ -191,9 +191,6 @@ export default function CheckoutPage() {
           setSubmitting(false);
           throw new Error(preferenceResult.error || "Error al crear la preferencia de pago");
         }
-
-        // Clear cart before redirecting
-        clearCart();
 
         // Redirect to MercadoPago checkout
         window.location.href = preferenceResult.initPoint;

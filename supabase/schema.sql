@@ -88,12 +88,36 @@ alter table public.product_sizes enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 
+create or replace function public.is_admin(user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = user_id
+      and role = 'admin'
+  );
+$$;
+
+revoke execute on function public.is_admin(uuid) from public;
+grant execute on function public.is_admin(uuid) to anon;
+grant execute on function public.is_admin(uuid) to authenticated;
+grant execute on function public.is_admin(uuid) to service_role;
+
 -- Policies
 
 -- Profiles: Users can view their own profile, admins can view all
-create policy "Public profiles are viewable by everyone"
+create policy "Users can view their own profile"
   on profiles for select
-  using ( true );
+  using ( auth.uid() = id );
+
+create policy "Admins can view all profiles"
+  on profiles for select
+  using ( public.is_admin(auth.uid()) );
 
 create policy "Users can insert their own profile"
   on profiles for insert
@@ -101,7 +125,16 @@ create policy "Users can insert their own profile"
 
 create policy "Users can update own profile"
   on profiles for update
-  using ( auth.uid() = id );
+  using ( auth.uid() = id )
+  with check (
+    auth.uid() = id
+    and ( role = 'user' or public.is_admin(auth.uid()) )
+  );
+
+create policy "Admins can update all profiles"
+  on profiles for update
+  using ( public.is_admin(auth.uid()) )
+  with check ( public.is_admin(auth.uid()) );
 
 -- Categories: Everyone can view, only admins can insert/update
 create policy "Categories are viewable by everyone"
@@ -164,7 +197,14 @@ create policy "Admins can view all orders"
 
 create policy "Users can insert their own orders"
   on orders for insert
-  with check ( auth.uid() = user_id );
+  with check (
+    auth.uid() = user_id
+    and status = 'pending'
+    and payment_status = 'pending_payment'
+    and total >= 0
+    and shipping_cost >= 0
+    and tracking_number is null
+  );
 
 create policy "Admins can update orders"
   on orders for update
@@ -181,7 +221,11 @@ create policy "Admins can view all order items"
 
 create policy "Users can insert order items for their orders"
   on order_items for insert
-  with check ( exists ( select 1 from orders where orders.id = order_items.order_id and orders.user_id = auth.uid() ) );
+  with check (
+    quantity > 0
+    and price_at_purchase >= 0
+    and exists ( select 1 from orders where orders.id = order_items.order_id and orders.user_id = auth.uid() )
+  );
 
 -- Insert default categories
 insert into public.categories (name, slug, description) values
@@ -323,3 +367,18 @@ begin
   end if;
 end;
 $$ language plpgsql security definer;
+
+alter function public.handle_new_user() set search_path = public;
+alter function public.sync_product_total_stock() set search_path = public;
+alter function public.restore_stock_on_cancel() set search_path = public;
+alter function public.cancel_unpaid_orders() set search_path = public;
+alter function public.decrement_stock(uuid, integer, text) set search_path = public;
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.sync_product_total_stock() from public, anon, authenticated;
+revoke execute on function public.restore_stock_on_cancel() from public, anon, authenticated;
+revoke execute on function public.cancel_unpaid_orders() from public, anon;
+revoke execute on function public.decrement_stock(uuid, integer, text) from public, anon;
+
+grant execute on function public.cancel_unpaid_orders() to authenticated;
+grant execute on function public.decrement_stock(uuid, integer, text) to authenticated;

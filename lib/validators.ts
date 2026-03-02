@@ -1,5 +1,39 @@
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TRACKING_REGEX = /^[A-Za-z0-9\-_/\s]{1,120}$/;
+
+const ORDER_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
+const PAYMENT_STATUSES = ['pending_payment', 'paid', 'failed'] as const;
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export function isUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+export function isValidOrderStatus(value: string): value is OrderStatus {
+  return ORDER_STATUSES.includes(value as OrderStatus);
+}
+
+export function isValidPaymentStatus(value: string): value is PaymentStatus {
+  return PAYMENT_STATUSES.includes(value as PaymentStatus);
+}
+
+export function sanitizeText(value: string, maxLength = 120): string {
+  return value.trim().slice(0, maxLength);
+}
+
+export function isValidTrackingNumber(value: string): boolean {
+  return TRACKING_REGEX.test(value.trim());
+}
+
 /**
  * Validates an Argentine phone number
  * Accepts formats: +54 9 11 1234-5678, +5491112345678, 11 1234 5678, etc.
