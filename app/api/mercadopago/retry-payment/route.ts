@@ -7,11 +7,19 @@ function shouldExcludeAccountMoney(accessToken: string): boolean {
   if (override === "true") return true;
   if (override === "false") return false;
 
-  if (accessToken.startsWith("TEST-")) {
-    return true;
-  }
+  return accessToken.startsWith("TEST-");
+}
 
-  return process.env.NODE_ENV !== "production";
+function isAccountMoneyExclusionError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const message = "message" in error ? String(error.message).toLowerCase() : "";
+  const apiError = "error" in error ? String(error.error).toLowerCase() : "";
+
+  return (
+    message.includes("account_money cannot be excluded") ||
+    apiError.includes("account_money cannot be excluded")
+  );
 }
 
 function getAppUrl(request: NextRequest): string {
@@ -25,6 +33,16 @@ function getAppUrl(request: NextRequest): string {
   }
 
   return new URL(request.url).origin;
+}
+
+function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init_point?: string | null }): string | null {
+  const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
+
+  if (useSandboxInitPoint) {
+    return response.sandbox_init_point || response.init_point || null;
+  }
+
+  return response.init_point || response.sandbox_init_point || null;
 }
 
 export async function POST(request: NextRequest) {
@@ -138,7 +156,20 @@ export async function POST(request: NextRequest) {
         : {}),
     };
 
-    const response = await preference.create({ body: preferenceData });
+    let response;
+    try {
+      response = await preference.create({ body: preferenceData });
+    } catch (error) {
+      if (excludeAccountMoney && isAccountMoneyExclusionError(error)) {
+        console.warn("MercadoPago rejected account_money exclusion, retrying without exclusion");
+        const { payment_methods, ...fallbackPreferenceData } = preferenceData as typeof preferenceData & {
+          payment_methods?: unknown;
+        };
+        response = await preference.create({ body: fallbackPreferenceData });
+      } else {
+        throw error;
+      }
+    }
 
     // Update order with new preference_id and reset to pending_payment
     const { error: updateError } = await supabase
@@ -156,10 +187,19 @@ export async function POST(request: NextRequest) {
       console.error("Error updating order with preference_id:", updateError);
     }
 
+    const initPoint = resolveCheckoutUrl(response);
+
+    if (!initPoint) {
+      return NextResponse.json(
+        { error: "NO SE PUDO OBTENER URL DE CHECKOUT" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       preferenceId: response.id,
-      initPoint: response.sandbox_init_point || response.init_point,
+      initPoint,
     });
 
   } catch (error) {

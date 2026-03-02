@@ -29,12 +29,14 @@ NEXT_PUBLIC_APP_URL=https://your-domain.com
 MP_ACCESS_TOKEN=TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 MP_WEBHOOK_SECRET=xxxxxxxx
 MP_EXCLUDE_ACCOUNT_MONEY=true
+MP_USE_SANDBOX_INIT_POINT=false
 ```
 
 - `NEXT_PUBLIC_APP_URL` is required in production for payment preference and callback URLs.
 - `MP_WEBHOOK_SECRET` is required in production to validate MercadoPago webhook signatures.
 - Use test credentials for sandbox tests and a buyer account different from the account used to create the preference.
 - `MP_EXCLUDE_ACCOUNT_MONEY=true` helps avoid sandbox wallet/account-money issues during test checkouts.
+- Keep `MP_USE_SANDBOX_INIT_POINT=false` unless you explicitly need sandbox redirect URL.
 - Do not hardcode credentials in scripts or route files.
 
 ## Learn More
