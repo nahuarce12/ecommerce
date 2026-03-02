@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUIStore } from "@/store/ui-store";
 import { useCartStore } from "@/store/cart-store";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +13,7 @@ type Filter = "NEW" | "CLOTHES" | "ACCESSORIES" | "ORDERS";
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { toggleCart, selectedFilter, setSelectedFilter } = useUIStore();
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -41,13 +42,13 @@ export function Header() {
 
   const handleFilterClick = (filter: Filter) => {
     if (filter === "ORDERS") {
-      window.location.href = "/orders";
+      router.push("/orders");
     } else {
       // Redirect to home and set filter
-      if (window.location.pathname !== "/") {
-        window.location.href = "/";
-      }
       setSelectedFilter(filter);
+      if (pathname !== "/") {
+        router.push("/");
+      }
     }
   };
 
