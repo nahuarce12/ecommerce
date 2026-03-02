@@ -52,6 +52,9 @@ interface OrderItem {
   price_at_purchase: number;
 }
 
+type BaseOrderRow = Omit<Order, "profiles">;
+type ProfileRow = { id: string; full_name: string | null };
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,12 +108,12 @@ export default function OrdersPage() {
         .in("id", userIds);
       
       // Merge profiles into orders
-      const ordersWithProfiles = data.map(order => ({
+      const ordersWithProfiles = (data as BaseOrderRow[]).map((order) => ({
         ...order,
-        profiles: profilesData?.find(p => p.id === order.user_id) || null
+        profiles: (profilesData as ProfileRow[] | null)?.find((profile) => profile.id === order.user_id) || null,
       }));
-      
-      setOrders(ordersWithProfiles as any);
+
+      setOrders(ordersWithProfiles);
     }
     setLoading(false);
   };

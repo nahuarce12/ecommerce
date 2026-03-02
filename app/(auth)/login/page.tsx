@@ -162,7 +162,7 @@ function LoginContent() {
           </Button>
 
           <div className="text-center text-xs">
-            <span className="text-muted-foreground uppercase">Don't have an account? </span>
+            <span className="text-muted-foreground uppercase">Don&apos;t have an account? </span>
             <Link href="/signup" className="underline font-medium uppercase">
               Sign Up
             </Link>

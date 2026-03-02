@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Product, Category } from "@/types";
+import { Category } from "@/types";
 import { useAdminStore } from "@/store/admin-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

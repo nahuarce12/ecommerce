@@ -8,9 +8,13 @@ import { useUIStore } from "@/store/ui-store";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
 
+type ShopProduct = Product & {
+  categories: Array<{ slug: string }>;
+};
+
 export default function ShopPage() {
   const selectedFilter = useUIStore((state) => state.selectedFilter);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export default function ShopPage() {
         .order("created_at", { ascending: false });
 
       if (data) {
-        setProducts(data as any);
+        setProducts(data as ShopProduct[]);
       }
       setLoading(false);
     };
@@ -35,12 +39,12 @@ export default function ShopPage() {
     if (selectedFilter === "NEW") return true;
     
     if (selectedFilter === "CLOTHES") {
-      const categorySlug = (product as any).categories?.slug;
+      const categorySlug = product.categories?.[0]?.slug;
       return ["remeras", "buzos", "pantalones", "shorts", "camperas"].includes(categorySlug);
     }
     
     if (selectedFilter === "ACCESSORIES") {
-      const categorySlug = (product as any).categories?.slug;
+      const categorySlug = product.categories?.[0]?.slug;
       return ["accesorios", "gorras"].includes(categorySlug);
     }
     

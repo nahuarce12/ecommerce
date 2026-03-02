@@ -136,8 +136,8 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold uppercase mb-4">9. Cambios a Esta Política</h2>
             <p className="text-muted-foreground">
               Podemos actualizar esta Política de Privacidad ocasionalmente. Te notificaremos sobre cambios 
-              significativos publicando la nueva política en esta página y actualizando la fecha de "última 
-              actualización".
+              significativos publicando la nueva política en esta página y actualizando la fecha de &quot;última 
+              actualización&quot;.
             </p>
           </div>
 

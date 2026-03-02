@@ -24,10 +24,18 @@ interface RecentOrder {
   tracking_number: string | null;
 }
 
+type RecentOrderWithItems = RecentOrder & {
+  order_items: Array<{ quantity: number }>;
+};
+
+type RecentOrderWithCount = RecentOrder & {
+  itemCount: number;
+};
+
 export function AccountClient({ user, profile: initialProfile }: AccountClientProps) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
-  const [orders, setOrders] = useState<RecentOrder[]>([]);
+  const [orders, setOrders] = useState<RecentOrderWithCount[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const isAdmin = profile?.role === "admin";
 
@@ -51,11 +59,12 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
       
       if (data) {
         // Calculate total items for each order
-        const ordersWithItemCount = data.map(order => ({
+        const typedOrders = data as RecentOrderWithItems[];
+        const ordersWithItemCount = typedOrders.map((order) => ({
           ...order,
-          itemCount: (order.order_items as any[])?.reduce((sum, item) => sum + item.quantity, 0) || 0
+          itemCount: order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
         }));
-        setOrders(ordersWithItemCount as any);
+        setOrders(ordersWithItemCount);
       }
       setLoadingOrders(false);
     };
@@ -158,7 +167,7 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
                           {new Date(order.created_at).toLocaleDateString("es-AR")}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {(order as any).itemCount} {(order as any).itemCount === 1 ? 'item' : 'items'}
+                          {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
                         </p>
                         {order.tracking_number && (
                           <p className="text-xs text-muted-foreground mt-1 font-mono">

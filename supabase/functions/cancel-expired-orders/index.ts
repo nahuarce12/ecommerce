@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
-Deno.serve(async (req) => {
+Deno.serve(async () => {
   try {
     // Create Supabase client with service role key for elevated permissions
     const supabaseClient = createClient(

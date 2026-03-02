@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
 
 export default function AccessibilityPage() {
   return (

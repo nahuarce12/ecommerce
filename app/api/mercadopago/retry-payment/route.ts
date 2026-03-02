@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 
+type RetryOrderItem = {
+  id: string;
+  product_id: string | null;
+  product_name: string;
+  size: string;
+  color: string;
+  quantity: number;
+  price_at_purchase: number;
+};
+
+type RetryOrder = {
+  id: string;
+  shipping_cost: number;
+  payment_status: "failed" | "pending_payment" | "paid";
+  order_items: RetryOrderItem[];
+};
+
 function shouldExcludeAccountMoney(accessToken: string): boolean {
   const override = process.env.MP_EXCLUDE_ACCOUNT_MONEY?.trim().toLowerCase();
   if (override === "true") return true;
@@ -92,8 +109,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const typedOrder = order as RetryOrder;
+
     // Only allow retry for failed or pending orders
-    if (order.payment_status !== "failed" && order.payment_status !== "pending_payment") {
+    if (typedOrder.payment_status !== "failed" && typedOrder.payment_status !== "pending_payment") {
       return NextResponse.json(
         { error: "ORDEN NO PUEDE SER REPROCESADA" },
         { status: 400 }
@@ -111,7 +130,7 @@ export async function POST(request: NextRequest) {
     const preference = new Preference(client);
 
     // Build items array
-    const items = order.order_items.map((item: any) => ({
+    const items = typedOrder.order_items.map((item) => ({
       id: item.product_id || item.id,
       title: item.product_name,
       description: `${item.size} - ${item.color}`,
@@ -121,13 +140,13 @@ export async function POST(request: NextRequest) {
     }));
 
     // Add shipping as a separate item if applicable
-    if (order.shipping_cost && order.shipping_cost > 0) {
+    if (typedOrder.shipping_cost && typedOrder.shipping_cost > 0) {
       items.push({
         id: "shipping",
         title: "Envío",
         description: "Costo de envío",
         quantity: 1,
-        unit_price: Number(order.shipping_cost),
+        unit_price: Number(typedOrder.shipping_cost),
         currency_id: "ARS",
       });
     }
@@ -162,9 +181,10 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       if (excludeAccountMoney && isAccountMoneyExclusionError(error)) {
         console.warn("MercadoPago rejected account_money exclusion, retrying without exclusion");
-        const { payment_methods, ...fallbackPreferenceData } = preferenceData as typeof preferenceData & {
+        const fallbackPreferenceData = { ...preferenceData } as typeof preferenceData & {
           payment_methods?: unknown;
         };
+        delete fallbackPreferenceData.payment_methods;
         response = await preference.create({ body: fallbackPreferenceData });
       } else {
         throw error;

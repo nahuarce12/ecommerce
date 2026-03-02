@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Plus, Search, Pencil, Trash2, Copy } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -26,11 +25,20 @@ import {
 } from "@/components/ui/select";
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 
+type ProductWithRelations = Product & {
+  categories: Array<{ name: string }>;
+  product_sizes: Array<{
+    id: string;
+    product_id: string;
+    size_label: string;
+    stock: number;
+  }>;
+};
+
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithRelations[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   
   const {
     searchQuery,
@@ -59,7 +67,7 @@ export default function ProductsPage() {
       supabase.from("categories").select("id, name, slug, description, created_at").order("name"),
     ]);
 
-    if (productsRes.data) setProducts(productsRes.data as any);
+    if (productsRes.data) setProducts(productsRes.data as ProductWithRelations[]);
     if (categoriesRes.data) setCategories(categoriesRes.data);
     setLoading(false);
   };
@@ -254,9 +262,9 @@ export default function ProductsPage() {
                 <TableCell className="uppercase text-xs">{product.brand}</TableCell>
                 <TableCell className="text-xs">${product.price}</TableCell>
                 <TableCell className="text-xs">
-                  {(product as any).product_sizes && (product as any).product_sizes.length > 0 ? (
+                  {product.product_sizes && product.product_sizes.length > 0 ? (
                     <div className="space-y-0.5">
-                      {(product as any).product_sizes.map((ps: any) => (
+                      {product.product_sizes.map((ps) => (
                         <div key={ps.id} className="flex gap-1">
                           <span className="font-medium uppercase">{ps.size_label}:</span>
                           <span className={ps.stock < 5 ? "text-destructive font-bold" : ""}>
@@ -275,7 +283,7 @@ export default function ProductsPage() {
                   )}
                 </TableCell>
                 <TableCell className="uppercase text-xs">
-                  {(product as any).categories?.name || "-"}
+                  {product.categories?.[0]?.name || "-"}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

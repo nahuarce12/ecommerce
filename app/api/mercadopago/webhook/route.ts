@@ -102,9 +102,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update order based on payment status
-    let updateData: any = {
-      mercadopago_payment_id: paymentIdString,
-      mercadopago_merchant_order_id: merchantOrderId,
+    const updateData: {
+      mercadopago_payment_id: string | null;
+      mercadopago_merchant_order_id: string | null;
+      payment_status?: "paid" | "failed";
+      status?: "confirmed";
+    } = {
+      mercadopago_payment_id: paymentIdString ?? null,
+      mercadopago_merchant_order_id: merchantOrderId ?? null,
     };
 
     if (paymentStatus === "approved") {

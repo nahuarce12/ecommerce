@@ -25,8 +25,12 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 
+type CategoryWithProductsCount = Category & {
+  products: Array<{ count: number }>;
+};
+
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryWithProductsCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -62,7 +66,7 @@ export default function CategoriesPage() {
       .select("id, name, slug, description, created_at, products(count)")
       .order("name");
 
-    if (data) setCategories(data as any);
+    if (data) setCategories(data as CategoryWithProductsCount[]);
     setLoading(false);
   };
 
@@ -124,8 +128,8 @@ export default function CategoriesPage() {
     fetchCategories();
   };
 
-  const handleDelete = async (category: Category) => {
-    const productCount = (category as any).products?.[0]?.count || 0;
+  const handleDelete = async (category: CategoryWithProductsCount) => {
+    const productCount = category.products?.[0]?.count || 0;
 
     if (productCount > 0) {
       alert(`Cannot delete category with ${productCount} product(s). Remove products first.`);
@@ -187,7 +191,7 @@ export default function CategoriesPage() {
           </TableHeader>
           <TableBody>
             {categories.map((category) => {
-              const productCount = (category as any).products?.[0]?.count || 0;
+              const productCount = category.products?.[0]?.count || 0;
               return (
                 <TableRow key={category.id}>
                   <TableCell className="font-medium uppercase text-xs">{category.name}</TableCell>

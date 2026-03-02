@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye, CreditCard, RefreshCw } from "lucide-react";
+import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye, CreditCard } from "lucide-react";
 import { BANK_INFO, WHATSAPP_NUMBER, generateWhatsAppLink } from "@/lib/payment-methods";
 import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
 import Image from "next/image";
@@ -19,6 +19,19 @@ interface PageProps {
     status?: string;
   }>;
 }
+
+type OrderDisplayItem = {
+  id: string;
+  quantity: number;
+  price_at_purchase: number;
+  size: string;
+  color: string;
+  product: {
+    id: string;
+    name: string;
+    images: string[];
+  };
+};
 
 export default async function OrderSuccessPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
@@ -195,7 +208,7 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {order.order_items.map((item: any) => (
+              {(order.order_items as OrderDisplayItem[]).map((item) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0 border border">
                     <Image

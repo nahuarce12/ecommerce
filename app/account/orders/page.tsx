@@ -3,9 +3,22 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Eye, RefreshCw, CreditCard } from "lucide-react";
-import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
+import { Package, Eye } from "lucide-react";
 import Link from "next/link";
+
+type OrderListItem = {
+  id: string;
+  status: string;
+  payment_status: string;
+  payment_method: string | null;
+  total: number;
+  created_at: string;
+  tracking_number: string | null;
+  order_items: Array<{
+    id: string;
+    quantity: number;
+  }>;
+};
 
 export default async function OrdersPage() {
   const supabase = await createClient();
@@ -63,8 +76,8 @@ export default async function OrdersPage() {
     }
   };
 
-  const getTotalItems = (order: any) => {
-    return order.order_items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  const getTotalItems = (order: OrderListItem) => {
+    return order.order_items.reduce((sum, item) => sum + item.quantity, 0);
   };
 
   return (
@@ -91,16 +104,19 @@ export default async function OrdersPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {orders.map((order: any) => (
+            {orders.map((order) => {
+              const typedOrder = order as OrderListItem;
+
+              return (
               <Card key={order.id} className="border-2">
                 <CardHeader>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
                       <CardTitle className="text-sm uppercase mb-1">
-                        PEDIDO #{order.id.slice(0, 8)}
+                        PEDIDO #{typedOrder.id.slice(0, 8)}
                       </CardTitle>
                       <p className="text-xs text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString("es-AR", {
+                        {new Date(typedOrder.created_at).toLocaleDateString("es-AR", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
@@ -108,11 +124,11 @@ export default async function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      <Badge className={`${getStatusColor(order.status)} text-white uppercase text-xs`}>
-                        {order.status}
+                      <Badge className={`${getStatusColor(typedOrder.status)} text-white uppercase text-xs`}>
+                        {typedOrder.status}
                       </Badge>
-                      <Badge className={`${getPaymentStatusColor(order.payment_status)} text-white uppercase text-xs`}>
-                        {order.payment_status.replace("_", " ")}
+                      <Badge className={`${getPaymentStatusColor(typedOrder.payment_status)} text-white uppercase text-xs`}>
+                        {typedOrder.payment_status.replace("_", " ")}
                       </Badge>
                     </div>
                   </div>
@@ -121,19 +137,19 @@ export default async function OrdersPage() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="text-sm space-y-1">
                       <p className="uppercase text-gray-600">
-                        ITEMS: <span className="font-semibold text-black">{getTotalItems(order)}</span>
+                        ITEMS: <span className="font-semibold text-black">{getTotalItems(typedOrder)}</span>
                       </p>
                       <p className="uppercase">
-                        TOTAL: <span className="font-bold text-lg">${order.total.toLocaleString()}</span>
+                        TOTAL: <span className="font-bold text-lg">${typedOrder.total.toLocaleString()}</span>
                       </p>
-                      {order.tracking_number && (
+                      {typedOrder.tracking_number && (
                         <p className="uppercase text-gray-600">
-                          TRACKING: <span className="font-mono font-semibold text-black">{order.tracking_number}</span>
+                          TRACKING: <span className="font-mono font-semibold text-black">{typedOrder.tracking_number}</span>
                         </p>
                       )}
                     </div>
                     <div className="flex flex-col gap-2 w-full md:w-auto">
-                      <Link href={`/checkout/success/${order.id}`} className="w-full">
+                      <Link href={`/checkout/success/${typedOrder.id}`} className="w-full">
                         <Button variant="outline" className="border-2 uppercase w-full">
                           <Eye className="h-4 w-4 mr-2" />
                           VER DETALLES
@@ -143,7 +159,8 @@ export default async function OrdersPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
 

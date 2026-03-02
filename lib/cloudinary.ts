@@ -16,20 +16,55 @@ export interface CloudinaryUploadResult {
   format: string;
 }
 
+type CloudinaryWidgetResult = {
+  event: string;
+  info: CloudinaryUploadResult;
+};
+
+type CloudinaryWidget = {
+  open: () => void;
+  close: () => void;
+};
+
+type CloudinaryApi = {
+  createUploadWidget: (
+    options: {
+      cloudName?: string;
+      uploadPreset?: string;
+      sources: string[];
+      multiple: boolean;
+      maxFiles: number;
+      clientAllowedFormats: string[];
+      maxFileSize: number;
+      folder: string;
+      resourceType: string;
+      cropping: boolean;
+      croppingAspectRatio: number;
+      croppingShowDimensions: boolean;
+      showSkipCropButton: boolean;
+    },
+    callback: (error: Error | null, result: CloudinaryWidgetResult) => void
+  ) => CloudinaryWidget;
+};
+
+declare global {
+  interface Window {
+    cloudinary?: CloudinaryApi;
+  }
+}
+
 export const openCloudinaryWidget = (
   onSuccess: (url: string) => void,
   onError?: (error: Error) => void
 ) => {
   if (typeof window === 'undefined') return;
 
-  // @ts-ignore - Cloudinary widget is loaded via script
   if (!window.cloudinary) {
     console.error('Cloudinary widget not loaded');
     onError?.(new Error('Cloudinary widget not loaded'));
     return;
   }
 
-  // @ts-ignore
   const widget = window.cloudinary.createUploadWidget(
     {
       cloudName: cloudinaryConfig.cloudName,

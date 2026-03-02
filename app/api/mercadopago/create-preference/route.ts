@@ -3,6 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
 
+type PreferenceOrderItem = {
+  id: string;
+  product_id: string | null;
+  product_name: string;
+  size: string;
+  color: string;
+  quantity: number;
+  price_at_purchase: number;
+};
+
+type PreferenceOrder = {
+  id: string;
+  shipping_cost: number;
+  order_items: PreferenceOrderItem[];
+};
+
 function shouldExcludeAccountMoney(accessToken: string): boolean {
   const override = process.env.MP_EXCLUDE_ACCOUNT_MONEY?.trim().toLowerCase();
   if (override === "true") return true;
@@ -90,7 +106,7 @@ export async function POST(request: NextRequest) {
     // Get order details
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("*, order_items(*)")
+      .select("id, shipping_cost, order_items(id, product_id, product_name, size, color, quantity, price_at_purchase)")
       .eq("id", orderId)
       .eq("user_id", user.id)
       .single();
@@ -101,6 +117,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const typedOrder = order as PreferenceOrder;
 
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
@@ -113,7 +131,7 @@ export async function POST(request: NextRequest) {
     const preference = new Preference(client);
 
     // Build items array
-    const items = order.order_items.map((item: any) => ({
+    const items = typedOrder.order_items.map((item) => ({
       id: item.product_id || item.id,
       title: item.product_name,
       description: `${item.size} - ${item.color}`,
@@ -123,13 +141,13 @@ export async function POST(request: NextRequest) {
     }));
 
     // Add shipping as a separate item if applicable
-    if (order.shipping_cost && order.shipping_cost > 0) {
+    if (typedOrder.shipping_cost && typedOrder.shipping_cost > 0) {
       items.push({
         id: "shipping",
         title: "Envío",
         description: "Costo de envío",
         quantity: 1,
-        unit_price: Number(order.shipping_cost),
+        unit_price: Number(typedOrder.shipping_cost),
         currency_id: "ARS",
       });
     }
@@ -169,9 +187,10 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       if (excludeAccountMoney && isAccountMoneyExclusionError(error)) {
         console.warn("MercadoPago rejected account_money exclusion, retrying without exclusion");
-        const { payment_methods, ...fallbackPreferenceData } = preferenceData as typeof preferenceData & {
+        const fallbackPreferenceData = { ...preferenceData } as typeof preferenceData & {
           payment_methods?: unknown;
         };
+        delete fallbackPreferenceData.payment_methods;
         response = await preference.create({ body: fallbackPreferenceData });
       } else {
         throw error;
