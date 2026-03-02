@@ -119,31 +119,38 @@ export async function POST(request: NextRequest) {
 
       console.log("Payment approved, updating order:", orderId);
 
-      // Update order
-      const { error: updateError } = await supabase
+      // Update order only if it is still pending payment.
+      // This makes stock decrement idempotent when MercadoPago sends duplicate notifications.
+      const { data: updatedOrder, error: updateError } = await supabase
         .from("orders")
         .update(updateData)
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .eq("payment_status", "pending_payment")
+        .select("id")
+        .maybeSingle();
 
       if (updateError) {
         console.error("Error updating order:", updateError);
         return NextResponse.json({ error: "Error updating order" }, { status: 500 });
       }
 
-      // Decrement stock for each item (only if not already decremented)
-      if (order.status === "pending" && order.payment_status === "pending_payment") {
-        for (const item of order.order_items) {
-          const sizeLabel = item.size && item.size !== 'ÚNICO' ? item.size : null;
-          const { error: stockError } = await supabase.rpc("decrement_stock", {
-            product_id: item.product_id,
-            quantity: item.quantity,
-            size_label: sizeLabel,
-          });
+      if (!updatedOrder) {
+        console.log("Payment notification already processed, skipping stock decrement:", orderId);
+        return NextResponse.json({ success: true, duplicate: true }, { status: 200 });
+      }
 
-          if (stockError) {
-            console.error("Error decrementing stock:", stockError);
-            // Continue processing other items even if one fails
-          }
+      // Decrement stock for each item (only if not already decremented)
+      for (const item of order.order_items) {
+        const sizeLabel = item.size && item.size !== 'ÚNICO' ? item.size : null;
+        const { error: stockError } = await supabase.rpc("decrement_stock", {
+          product_id: item.product_id,
+          quantity: item.quantity,
+          size_label: sizeLabel,
+        });
+
+        if (stockError) {
+          console.error("Error decrementing stock:", stockError);
+          // Continue processing other items even if one fails
         }
       }
 
