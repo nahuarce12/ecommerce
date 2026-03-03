@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductOverlay } from "@/components/product/product-overlay";
@@ -22,7 +22,10 @@ export default function ShopPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from("products")
-        .select("*, categories(slug), product_sizes(*)")
+        .select(
+          "id, name, slug, description, price, category_id, brand, stock, images, sizes, colors, is_active, sizes_enabled, created_at, categories(slug), product_sizes(id, product_id, size_label, stock)"
+        )
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (data) {
@@ -35,21 +38,23 @@ export default function ShopPage() {
   }, []);
 
   // Filter products based on selected filter
-  const filteredProducts = products.filter((product) => {
-    if (selectedFilter === "NEW") return true;
-    
-    if (selectedFilter === "CLOTHES") {
-      const categorySlug = product.categories?.[0]?.slug;
-      return ["remeras", "buzos", "pantalones", "shorts", "camperas"].includes(categorySlug);
-    }
-    
-    if (selectedFilter === "ACCESSORIES") {
-      const categorySlug = product.categories?.[0]?.slug;
-      return ["accesorios", "gorras"].includes(categorySlug);
-    }
-    
-    return true;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      if (selectedFilter === "NEW") return true;
+
+      if (selectedFilter === "CLOTHES") {
+        const categorySlug = product.categories?.[0]?.slug;
+        return ["remeras", "buzos", "pantalones", "shorts", "camperas"].includes(categorySlug);
+      }
+
+      if (selectedFilter === "ACCESSORIES") {
+        const categorySlug = product.categories?.[0]?.slug;
+        return ["accesorios", "gorras"].includes(categorySlug);
+      }
+
+      return true;
+    });
+  }, [products, selectedFilter]);
 
   if (loading) {
     return (

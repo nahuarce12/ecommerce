@@ -72,10 +72,10 @@ export default function OrdersPage() {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(statusFilter);
+  }, [statusFilter]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (filter: string) => {
     const supabase = createClient();
     
     // First check if user is authenticated and admin
@@ -87,10 +87,16 @@ export default function OrdersPage() {
     }
 
     // Get orders
-    const { data, error } = await supabase
+    let ordersQuery = supabase
       .from("orders")
       .select("id, user_id, status, payment_status, total, shipping_cost, shipping_address, payment_method, tracking_number, created_at")
       .order("created_at", { ascending: false });
+
+    if (filter !== "all") {
+      ordersQuery = ordersQuery.eq("status", filter);
+    }
+
+    const { data, error } = await ordersQuery;
 
     if (error) {
       console.error("Error fetching orders:", error);
@@ -98,19 +104,21 @@ export default function OrdersPage() {
     }
     
     if (data) {
-      console.log("Orders fetched:", data.length);
-      
       // Get profiles for each unique user_id
       const userIds = [...new Set(data.map(order => order.user_id))];
       const { data: profilesData } = await supabase
         .from("profiles")
         .select("id, full_name")
         .in("id", userIds);
+
+      const profilesMap = new Map((profilesData as ProfileRow[] | null)?.map((profile) => [profile.id, profile.full_name]) ?? []);
       
       // Merge profiles into orders
       const ordersWithProfiles = (data as BaseOrderRow[]).map((order) => ({
         ...order,
-        profiles: (profilesData as ProfileRow[] | null)?.find((profile) => profile.id === order.user_id) || null,
+        profiles: profilesMap.has(order.user_id)
+          ? { id: order.user_id, full_name: profilesMap.get(order.user_id) ?? null }
+          : null,
       }));
 
       setOrders(ordersWithProfiles);
@@ -228,10 +236,7 @@ export default function OrdersPage() {
     }
   };
 
-  const filteredOrders = orders.filter((order) => {
-    if (statusFilter === "all") return true;
-    return order.status === statusFilter;
-  });
+  const filteredOrders = orders;
 
   if (loading) {
     return <div className="text-center py-12 uppercase">Loading...</div>;
