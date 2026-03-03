@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     const { data: order, error: orderError } = await serviceClient
       .from("orders")
-      .select("*")
+      .select("id, user_id, payment_status, total, payment_method")
       .eq("id", orderId)
       .single();
 
