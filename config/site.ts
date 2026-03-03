@@ -1,5 +1,5 @@
 export const siteConfig = {
-  name: "Ecommerce China",
+  name: "Supply World",
   description: "Tienda minimalista de ropa exclusiva: Supreme, Corteiz, Bape, Nike, Hellstar.",
   mainNav: [
     {
@@ -32,8 +32,8 @@ export const siteConfig = {
     },
   ],
   links: {
-    twitter: "https://twitter.com/ecommercechina",
-    github: "https://github.com/ecommercechina",
-    instagram: "https://instagram.com/ecommercechina",
+    twitter: "https://twitter.com/supplyworld",
+    github: "https://github.com/supplyworld",
+    instagram: "https://instagram.com/supplyworld.ros",
   },
 };

@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </div>
       <div className="p-2 md:p-4 text-center bg-white">
-        <h3 className="text-[10px] md:text-xs font-medium uppercase tracking-wide">{product.name}</h3>
+        <h3 className="z-10 w-full max-w-full text-center whitespace-nowrap uppercase tracking-wide">{product.name}</h3>
       </div>
     </div>
   );
