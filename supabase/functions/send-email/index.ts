@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'Ecommerce China <onboarding@resend.dev>'
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'SUPPLY WORLD <onboarding@resend.dev>'
 
     const { type, to, data } = (await req.json()) as EmailRequest
     const safeData = asRecord(data)

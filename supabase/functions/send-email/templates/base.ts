@@ -15,7 +15,7 @@ export function baseLayout(title: string, content: string): string {
           <tr>
             <td style="background-color:#000000;padding:24px 32px;text-align:center;">
               <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">
-                ECOMMERCE CHINA
+                SUPPLY WORLD
               </h1>
             </td>
           </tr>
@@ -29,7 +29,7 @@ export function baseLayout(title: string, content: string): string {
           <tr>
             <td style="background-color:#fafafa;padding:24px 32px;border-top:1px solid #e5e5e5;">
               <p style="margin:0 0 8px;color:#999999;font-size:11px;text-transform:uppercase;letter-spacing:1px;text-align:center;">
-                Ecommerce China &mdash; Ropa exclusiva
+                SUPPLY WORLD &mdash; Ropa exclusiva
               </p>
               <p style="margin:0;color:#cccccc;font-size:10px;text-align:center;">
                 Este email fue enviado autom&aacute;ticamente. No respondas a este mensaje.

@@ -11,7 +11,7 @@ export function welcomeTemplate(data: WelcomeData): { subject: string; html: str
       &iexcl;Bienvenido/a!
     </h2>
     <p style="margin:0 0 16px;font-size:14px;color:#333333;line-height:1.6;">
-      Hola <strong>${data.fullName}</strong>, gracias por crear tu cuenta en <strong>Ecommerce China</strong>.
+      Hola <strong>${data.fullName}</strong>, gracias por crear tu cuenta en <strong>SUPPLY WORLD</strong>.
     </p>
     <p style="margin:0 0 24px;font-size:14px;color:#333333;line-height:1.6;">
       Ya pod&eacute;s explorar nuestro cat&aacute;logo de ropa exclusiva: Supreme, Corteiz, Bape, Nike, Hellstar y m&aacute;s.
@@ -30,7 +30,7 @@ export function welcomeTemplate(data: WelcomeData): { subject: string; html: str
     </p>`
 
   return {
-    subject: '¡Bienvenido/a a Ecommerce China!',
-    html: baseLayout('Bienvenido/a a Ecommerce China', content),
+    subject: '¡Bienvenido/a a SUPPLY WORLD!',
+    html: baseLayout('Bienvenido/a a SUPPLY WORLD', content),
   }
 }
