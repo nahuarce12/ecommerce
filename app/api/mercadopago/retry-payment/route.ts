@@ -56,7 +56,14 @@ function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init
   const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
 
   if (useSandboxInitPoint) {
-    return response.sandbox_init_point || response.init_point || null;
+    if (response.sandbox_init_point) {
+      return response.sandbox_init_point;
+    }
+
+    console.error(
+      "MP_USE_SANDBOX_INIT_POINT=true pero Mercado Pago no devolvió sandbox_init_point. Revisá que estés usando credenciales TEST."
+    );
+    return null;
   }
 
   return response.init_point || response.sandbox_init_point || null;
@@ -65,7 +72,7 @@ function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const accessToken = process.env.MP_ACCESS_TOKEN;
+    const accessToken = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
 
     if (!accessToken) {
       return NextResponse.json(

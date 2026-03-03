@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ecommerce China",
+  title: "Supply World",
   description: "Minimalist streetwear store",
 };
 

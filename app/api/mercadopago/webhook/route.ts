@@ -13,12 +13,14 @@ type WebhookPayload = {
 
 export async function POST(request: NextRequest) {
   try {
-    const accessToken = process.env.MP_ACCESS_TOKEN;
+    const accessToken = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
     if (!accessToken) {
       return NextResponse.json({ error: "MP_ACCESS_TOKEN NO CONFIGURADO" }, { status: 500 });
     }
 
-    const webhookSecret = process.env.MP_WEBHOOK_SECRET?.trim();
+    const webhookSecret =
+      process.env.MP_WEBHOOK_SECRET?.trim() ||
+      process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();
 
     // Get notification data from MercadoPago
     const body = (await request.json()) as WebhookPayload;
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "INVALID SIGNATURE" }, { status: 401 });
       }
     } else if (process.env.NODE_ENV === "production") {
-      console.error("MercadoPago webhook rejected: MP_WEBHOOK_SECRET missing in production");
+      console.error("MercadoPago webhook rejected: MP_WEBHOOK_SECRET (o MERCADOPAGO_WEBHOOK_SECRET) missing in production");
       return NextResponse.json({ error: "WEBHOOK SECRET NOT CONFIGURED" }, { status: 500 });
     }
 
