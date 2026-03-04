@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Profile } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { ProfileEditForm } from "@/components/account/profile-edit-form";
+import { RecentOrdersSkeleton } from "@/components/account/recent-orders-skeleton";
 
 interface AccountClientProps {
   user: User;
@@ -147,11 +148,7 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
           <div>
             <h2 className="text-sm font-bold uppercase mb-4">Recent Orders</h2>
             {loadingOrders ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-muted animate-pulse border border-border" />
-                ))}
-              </div>
+              <RecentOrdersSkeleton />
             ) : orders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-xs uppercase">
                 No orders yet

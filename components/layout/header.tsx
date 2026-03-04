@@ -7,7 +7,7 @@ import { useUIStore } from "@/store/ui-store";
 import { useCartStore } from "@/store/cart-store";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { ShoppingBag, User as UserIcon } from "lucide-react";
+import { Menu, ShoppingBag, User as UserIcon, X } from "lucide-react";
 
 type Filter = "NEW" | "CLOTHES" | "ACCESSORIES" | "ORDERS";
 
@@ -17,8 +17,10 @@ export function Header() {
   const { toggleCart, selectedFilter, setSelectedFilter } = useUIStore();
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const itemCount = useCartStore((state) => state.getItemCount());
   const isOrdersPage = pathname === "/orders";
+  const filters: Filter[] = ["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"];
 
   useEffect(() => {
     setMounted(true);
@@ -41,6 +43,8 @@ export function Header() {
   }, []);
 
   const handleFilterClick = (filter: Filter) => {
+    setIsMobileFiltersOpen(false);
+
     if (filter === "ORDERS") {
       router.push("/orders");
     } else {
@@ -55,14 +59,14 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-sm">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center">
           <Link href="/" className="font-bold text-sm md:text-lg tracking-tighter">
             SUPPLY WORLD
           </Link>
         </div>
         {/* Navigation Filters */}
-        <nav className="flex items-center gap-4 md:gap-8 text-xs md:text-sm font-medium overflow-x-auto">
-          {(["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"] as Filter[]).map((filter) => {
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium overflow-x-auto">
+          {filters.map((filter) => {
             const isActive = filter === "ORDERS" ? isOrdersPage : selectedFilter === filter && !isOrdersPage;
             return (
               <button
@@ -93,8 +97,38 @@ export function Header() {
             <ShoppingBag className="h-4 w-4 md:h-5 md:w-5" />
             {mounted && <span className="text-xs md:text-sm font-medium">{itemCount}</span>}
           </button>
+          <button
+            onClick={() => setIsMobileFiltersOpen((prev) => !prev)}
+            className="md:hidden hover:opacity-70"
+            aria-label={isMobileFiltersOpen ? "Close filters" : "Open filters"}
+            aria-expanded={isMobileFiltersOpen}
+            aria-controls="mobile-header-filters"
+          >
+            {isMobileFiltersOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
         </div>
       </div>
+
+      {isMobileFiltersOpen && (
+        <div id="mobile-header-filters" className="border-t border-border px-4 pb-3 pt-2 md:hidden">
+          <nav className="flex items-center gap-4 text-xs font-medium overflow-x-auto">
+            {filters.map((filter) => {
+              const isActive = filter === "ORDERS" ? isOrdersPage : selectedFilter === filter && !isOrdersPage;
+              return (
+                <button
+                  key={filter}
+                  onClick={() => handleFilterClick(filter)}
+                  className={`uppercase tracking-wide transition-colors hover:text-foreground whitespace-nowrap ${
+                    isActive ? "text-foreground font-bold" : "text-muted-foreground"
+                  }`}
+                >
+                  {filter === "ACCESSORIES" ? "ACCESS." : filter}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

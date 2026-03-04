@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductOverlay } from "@/components/product/product-overlay";
+import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
 import { useUIStore } from "@/store/ui-store";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
@@ -55,8 +56,8 @@ export default function ShopPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-sm uppercase text-muted-foreground">Loading...</p>
+      <div className="min-h-screen bg-white">
+        <ProductGridSkeleton />
       </div>
     );
   }
