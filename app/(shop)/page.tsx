@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ProductOverlay } from "@/components/product/product-overlay";
+import { ProductGridSkeleton } from "@/components/product/product-grid-skeleton";
 import { useUIStore } from "@/store/ui-store";
 import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
 
 type ShopProduct = Product & {
-  categories: Array<{ slug: string }>;
+  categories: { slug: string } | Array<{ slug: string }> | null;
 };
 
 export default function ShopPage() {
@@ -36,16 +37,24 @@ export default function ShopPage() {
 
   // Filter products based on selected filter
   const filteredProducts = useMemo(() => {
+    const getCategorySlug = (product: ShopProduct) => {
+      const categoryData = product.categories;
+      if (!categoryData) return undefined;
+      return Array.isArray(categoryData) ? categoryData[0]?.slug : categoryData.slug;
+    };
+
     return products.filter((product) => {
       if (selectedFilter === "NEW") return true;
 
       if (selectedFilter === "CLOTHES") {
-        const categorySlug = product.categories?.[0]?.slug;
+        const categorySlug = getCategorySlug(product);
+        if (!categorySlug) return false;
         return ["remeras", "buzos", "pantalones", "shorts", "camperas"].includes(categorySlug);
       }
 
       if (selectedFilter === "ACCESSORIES") {
-        const categorySlug = product.categories?.[0]?.slug;
+        const categorySlug = getCategorySlug(product);
+        if (!categorySlug) return false;
         return ["accesorios", "gorras"].includes(categorySlug);
       }
 
@@ -55,8 +64,8 @@ export default function ShopPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-sm uppercase text-muted-foreground">Loading...</p>
+      <div className="min-h-screen bg-white">
+        <ProductGridSkeleton />
       </div>
     );
   }
