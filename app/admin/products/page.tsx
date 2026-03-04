@@ -26,7 +26,7 @@ import {
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
 
 type ProductWithRelations = Product & {
-  categories: Array<{ name: string }>;
+  categories: { name: string } | Array<{ name: string }> | null;
   product_sizes: Array<{
     id: string;
     product_id: string;
@@ -51,6 +51,12 @@ export default function ProductsPage() {
     setSelectedProduct,
     setProductDialogOpen,
   } = useAdminStore();
+
+  const getCategoryName = (product: ProductWithRelations) => {
+    const categoryData = product.categories;
+    if (!categoryData) return "-";
+    return Array.isArray(categoryData) ? categoryData[0]?.name || "-" : categoryData.name || "-";
+  };
 
   useEffect(() => {
     fetchData();
@@ -283,7 +289,7 @@ export default function ProductsPage() {
                   )}
                 </TableCell>
                 <TableCell className="uppercase text-xs">
-                  {product.categories?.[0]?.name || "-"}
+                  {getCategoryName(product)}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Product } from "@/types";
 
 type ShopProduct = Product & {
-  categories: Array<{ slug: string }>;
+  categories: { slug: string } | Array<{ slug: string }> | null;
 };
 
 export default function ShopPage() {
@@ -37,16 +37,24 @@ export default function ShopPage() {
 
   // Filter products based on selected filter
   const filteredProducts = useMemo(() => {
+    const getCategorySlug = (product: ShopProduct) => {
+      const categoryData = product.categories;
+      if (!categoryData) return undefined;
+      return Array.isArray(categoryData) ? categoryData[0]?.slug : categoryData.slug;
+    };
+
     return products.filter((product) => {
       if (selectedFilter === "NEW") return true;
 
       if (selectedFilter === "CLOTHES") {
-        const categorySlug = product.categories?.[0]?.slug;
+        const categorySlug = getCategorySlug(product);
+        if (!categorySlug) return false;
         return ["remeras", "buzos", "pantalones", "shorts", "camperas"].includes(categorySlug);
       }
 
       if (selectedFilter === "ACCESSORIES") {
-        const categorySlug = product.categories?.[0]?.slug;
+        const categorySlug = getCategorySlug(product);
+        if (!categorySlug) return false;
         return ["accesorios", "gorras"].includes(categorySlug);
       }
 
