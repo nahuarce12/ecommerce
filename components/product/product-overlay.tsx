@@ -81,18 +81,19 @@ export function ProductOverlay() {
             duration: 0.4,
             ease: [0.22, 1, 0.36, 1]
           }}
-          className="fixed inset-0 z-50 bg-background flex flex-col md:flex-row"
+          className="fixed inset-0 z-50 bg-background overflow-y-auto md:overflow-hidden"
         >
           {/* Close Button */}
           <button
             onClick={() => setSelectedProduct(null)}
-            className="absolute top-2 right-2 md:top-4 md:right-4 z-50 p-2 hover:bg-accent"
+            className="fixed top-2 right-2 z-50 p-2 hover:bg-accent md:absolute md:top-4 md:right-4"
           >
             <X className="h-5 w-5 md:h-6 md:w-6" />
           </button>
 
+          <div className="flex min-h-full flex-col md:h-full md:flex-row">
           {/* Image Section */}
-          <div className="relative flex-1 h-[40vh] md:h-[50vh] lg:h-full bg-secondary/10">
+          <div className="sticky top-0 z-0 h-[42vh] flex-none bg-secondary/10 md:relative md:flex-1 md:h-[50vh] lg:h-full">
             <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8">
               <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
                 <AnimatePresence mode="wait">
@@ -151,7 +152,7 @@ export function ProductOverlay() {
           </div>
 
           {/* Details Section */}
-          <div className="flex-1 flex flex-col justify-start md:justify-center p-4 md:p-8 lg:p-24 bg-background overflow-y-auto">
+          <div className="relative z-10 -mt-8 flex-1 rounded-t-2xl bg-background p-4 md:mt-0 md:rounded-none md:p-8 lg:p-24 md:overflow-y-auto">
             <div className="max-w-md mx-auto w-full space-y-4 md:space-y-8">
               <div className="text-center space-y-1 md:space-y-2">
                 <h2 className="text-lg md:text-2xl font-bold uppercase tracking-tight">
@@ -263,6 +264,7 @@ export function ProductOverlay() {
                 </AccordionItem>
               </Accordion>
             </div>
+          </div>
           </div>
         </motion.div>
       )}
