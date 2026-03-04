@@ -40,6 +40,23 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
   const [loadingOrders, setLoadingOrders] = useState(true);
   const isAdmin = profile?.role === "admin";
 
+  const getOrderStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "pendiente";
+      case "confirmed":
+        return "confirmado";
+      case "shipped":
+        return "enviado";
+      case "delivered":
+        return "entregado";
+      case "cancelled":
+        return "cancelado";
+      default:
+        return status;
+    }
+  };
+
   useEffect(() => {
     const loadOrders = async () => {
       const supabase = createClient();
@@ -146,12 +163,12 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
 
           {/* Orders Section (Placeholder) */}
           <div>
-            <h2 className="text-sm font-bold uppercase mb-4">Recent Orders</h2>
+            <h2 className="text-sm font-bold uppercase mb-4">Pedidos recientes</h2>
             {loadingOrders ? (
               <RecentOrdersSkeleton />
             ) : orders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-xs uppercase">
-                No orders yet
+                Aún no tenés pedidos
               </div>
             ) : (
               <div className="space-y-3">
@@ -164,11 +181,11 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
                           {new Date(order.created_at).toLocaleDateString("es-AR")}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
+                          {order.itemCount} {order.itemCount === 1 ? 'producto' : 'productos'}
                         </p>
                         {order.tracking_number && (
                           <p className="text-xs text-muted-foreground mt-1 font-mono">
-                            Tracking: {order.tracking_number}
+                            Seguimiento: {order.tracking_number}
                           </p>
                         )}
                       </div>
@@ -179,7 +196,7 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
                           order.status === 'shipped' ? 'bg-purple-500' :
                           order.status === 'delivered' ? 'bg-green-600' : 'bg-red-600'
                         } text-white`}>
-                          {order.status}
+                          {getOrderStatusLabel(order.status)}
                         </Badge>
                       </div>
                     </div>
@@ -223,14 +240,14 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
               className="uppercase text-xs"
               onClick={() => router.push("/")}
             >
-              Back to Shop
+              Volver a la tienda
             </Button>
             <Button
               variant="destructive"
               className="uppercase text-xs"
               onClick={handleLogout}
             >
-              Sign Out
+              Cerrar sesión
             </Button>
           </div>
         </div>

@@ -80,6 +80,36 @@ export default async function OrdersPage() {
     return order.order_items.reduce((sum, item) => sum + item.quantity, 0);
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "pendiente";
+      case "confirmed":
+        return "confirmado";
+      case "shipped":
+        return "enviado";
+      case "delivered":
+        return "entregado";
+      case "cancelled":
+        return "cancelado";
+      default:
+        return status;
+    }
+  };
+
+  const getPaymentStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending_payment":
+        return "pago pendiente";
+      case "paid":
+        return "pagado";
+      case "failed":
+        return "fallido";
+      default:
+        return status.replace("_", " ");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
       <div className="container max-w-6xl mx-auto px-4">
@@ -125,10 +155,10 @@ export default async function OrdersPage() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <Badge className={`${getStatusColor(typedOrder.status)} text-white uppercase text-xs`}>
-                        {typedOrder.status}
+                        {getStatusLabel(typedOrder.status)}
                       </Badge>
                       <Badge className={`${getPaymentStatusColor(typedOrder.payment_status)} text-white uppercase text-xs`}>
-                        {typedOrder.payment_status.replace("_", " ")}
+                        {getPaymentStatusLabel(typedOrder.payment_status)}
                       </Badge>
                     </div>
                   </div>
@@ -144,7 +174,7 @@ export default async function OrdersPage() {
                       </p>
                       {typedOrder.tracking_number && (
                         <p className="uppercase text-gray-600">
-                          TRACKING: <span className="font-mono font-semibold text-black">{typedOrder.tracking_number}</span>
+                          SEGUIMIENTO: <span className="font-mono font-semibold text-black">{typedOrder.tracking_number}</span>
                         </p>
                       )}
                     </div>

@@ -27,8 +27,16 @@ export function ProductCard({ product }: ProductCardProps) {
           />
         </div>
       </div>
-      <div className="p-2 md:p-4 text-center bg-white">
-        <h3 className="z-10 w-full max-w-full text-center whitespace-nowrap uppercase tracking-wide">{product.name}</h3>
+      <div className="overflow-hidden p-2 md:p-4 text-center bg-white">
+        <h3
+          className="z-10 w-full max-w-full text-center text-xs md:text-sm uppercase tracking-wide leading-tight break-words line-clamp-2 min-h-[2rem] md:min-h-[2.5rem]"
+          title={product.name}
+        >
+          {product.name}
+        </h3>
+        <p className="mt-1 text-xs md:text-sm font-medium text-muted-foreground">
+          ${product.price.toLocaleString("es-AR")}
+        </p>
       </div>
     </div>
   );
