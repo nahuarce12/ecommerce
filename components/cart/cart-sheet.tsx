@@ -33,15 +33,15 @@ export function CartSheet() {
       <SheetContent className="w-full sm:max-w-md border-l border-border p-0 flex flex-col">
         <SheetHeader className="px-4 md:px-6 py-3 md:py-4 border-b border-border flex flex-row items-center justify-between space-y-0">
           <SheetTitle className="uppercase text-xs md:text-sm font-bold tracking-wide">
-            Shopping Cart ({itemCount})
+            Carrito ({itemCount})
           </SheetTitle>
         </SheetHeader>
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 text-center space-y-3 md:space-y-4">
-            <p className="text-muted-foreground uppercase text-xs md:text-sm">Your cart is empty</p>
+            <p className="text-muted-foreground uppercase text-xs md:text-sm">Tu carrito está vacío</p>
             <Button variant="outline" onClick={toggleCart} className="uppercase text-[10px] md:text-xs">
-              Continue Shopping
+              Seguir comprando
             </Button>
           </div>
         ) : (
@@ -61,7 +61,7 @@ export function CartSheet() {
                     <div>
                       <h3 className="text-xs md:text-sm font-medium uppercase">{item.product.name}</h3>
                       <p className="text-[10px] md:text-xs text-muted-foreground uppercase mt-1">
-                        {item.color} / Size: {item.size}
+                        {item.color} / Talle: {item.size}
                       </p>
                       <p className="text-xs md:text-sm font-medium mt-1">${item.product.price}</p>
                     </div>
@@ -102,8 +102,8 @@ export function CartSheet() {
                   <span>${total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="uppercase text-muted-foreground">Shipping</span>
-                  <span className="text-[10px] md:text-xs text-muted-foreground">Calculated at checkout</span>
+                  <span className="uppercase text-muted-foreground">Envío</span>
+                  <span className="text-[10px] md:text-xs text-muted-foreground">Se calcula en checkout</span>
                 </div>
               </div>
               <Separator />
@@ -117,7 +117,7 @@ export function CartSheet() {
                 className="w-full h-10 md:h-12 uppercase tracking-wide text-xs md:text-base bg-black text-white hover:bg-gray-800 relative"
               >
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Checkout
+                Finalizar compra
                 {itemCount > 0 && (
                   <Badge className="ml-2 bg-white text-black px-2 py-0.5 text-xs">
                     {itemCount}

@@ -165,7 +165,7 @@ export function ProductOverlay() {
 
               {/* Color Selector */}
               <div className="space-y-3 md:space-y-4">
-                <span className="text-xs md:text-sm font-medium uppercase">Select Color</span>
+                <span className="text-xs md:text-sm font-medium uppercase">Seleccionar color</span>
                 <div className="flex gap-2 flex-wrap">
                   {selectedProduct.colors.map((color) => (
                     <button
@@ -187,9 +187,9 @@ export function ProductOverlay() {
               {/* Size Selector */}
               <div className="space-y-3 md:space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm font-medium uppercase">Select Size</span>
+                  <span className="text-xs md:text-sm font-medium uppercase">Seleccionar talle</span>
                   <button className="text-[10px] md:text-xs underline uppercase text-muted-foreground">
-                    Size Guide
+                    Guía de talles
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
@@ -234,32 +234,32 @@ export function ProductOverlay() {
                   disabled={!selectedSize || !selectedColor}
                   onClick={handleAddToCart}
                 >
-                  {!selectedColor ? "Select a Color" : !selectedSize ? "Select a Size" : "Add to Cart"}
+                  {!selectedColor ? "Seleccioná un color" : !selectedSize ? "Seleccioná un talle" : "Agregar al carrito"}
                 </Button>
               )}
 
               {/* Information Accordion */}
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="description">
-                  <AccordionTrigger className="uppercase text-xs md:text-sm">Description</AccordionTrigger>
+                  <AccordionTrigger className="uppercase text-xs md:text-sm">Descripción</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-xs md:text-sm">
                     {selectedProduct.description}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="details">
-                  <AccordionTrigger className="uppercase text-xs md:text-sm">Details</AccordionTrigger>
+                  <AccordionTrigger className="uppercase text-xs md:text-sm">Detalles</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-xs md:text-sm">
                     <ul className="list-disc list-inside space-y-1">
-                      <li>100% Cotton</li>
-                      <li>Made in China</li>
-                      <li>Brand: {selectedProduct.brand}</li>
+                      <li>100% algodón</li>
+                      <li>Hecho en China</li>
+                      <li>Marca: {selectedProduct.brand}</li>
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="shipping">
-                  <AccordionTrigger className="uppercase text-xs md:text-sm">Shipping & Returns</AccordionTrigger>
+                  <AccordionTrigger className="uppercase text-xs md:text-sm">Envíos y devoluciones</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-xs md:text-sm">
-                    Free shipping on orders over $200. Returns accepted within 14 days.
+                    Envío gratis en pedidos mayores a $200. Devoluciones aceptadas dentro de los 14 días.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>

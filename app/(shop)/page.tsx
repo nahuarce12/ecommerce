@@ -74,8 +74,8 @@ export default function ShopPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-sm uppercase text-muted-foreground">No products available</p>
-          <p className="text-xs text-muted-foreground">Add products through the admin dashboard</p>
+          <p className="text-sm uppercase text-muted-foreground">No hay productos disponibles</p>
+          <p className="text-xs text-muted-foreground">Agregá productos desde el panel de administración</p>
         </div>
       </div>
     );

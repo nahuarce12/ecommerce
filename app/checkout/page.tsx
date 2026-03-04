@@ -232,7 +232,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold uppercase">CHECKOUT</h1>
+          <h1 className="text-2xl md:text-4xl font-bold uppercase">FINALIZAR COMPRA</h1>
           <Link href="/">
             <Button variant="outline" className="border-2 border uppercase w-full sm:w-auto">
               <ArrowLeft className="h-4 w-4 mr-2" />

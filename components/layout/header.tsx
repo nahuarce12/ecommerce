@@ -21,6 +21,12 @@ export function Header() {
   const itemCount = useCartStore((state) => state.getItemCount());
   const isOrdersPage = pathname === "/orders";
   const filters: Filter[] = ["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"];
+  const filterLabels: Record<Filter, string> = {
+    NEW: "NUEVO",
+    CLOTHES: "ROPA",
+    ACCESSORIES: "ACCES.",
+    ORDERS: "ENCARGOS",
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -76,7 +82,7 @@ export function Header() {
                   isActive ? "text-foreground font-bold" : "text-muted-foreground"
                 }`}
               >
-                {filter === "ACCESSORIES" ? "ACCESS." : filter}
+                {filterLabels[filter]}
               </button>
             );
           })}
@@ -90,7 +96,7 @@ export function Header() {
             </Link>
           ) : (
             <Link href="/login" className="text-xs md:text-sm font-medium hover:underline underline-offset-4">
-              LOGIN
+              INGRESAR
             </Link>
           )}
           <button onClick={toggleCart} className="flex items-center gap-2 hover:opacity-70">
@@ -100,7 +106,7 @@ export function Header() {
           <button
             onClick={() => setIsMobileFiltersOpen((prev) => !prev)}
             className="md:hidden hover:opacity-70"
-            aria-label={isMobileFiltersOpen ? "Close filters" : "Open filters"}
+            aria-label={isMobileFiltersOpen ? "Cerrar filtros" : "Abrir filtros"}
             aria-expanded={isMobileFiltersOpen}
             aria-controls="mobile-header-filters"
           >
@@ -122,7 +128,7 @@ export function Header() {
                     isActive ? "text-foreground font-bold" : "text-muted-foreground"
                   }`}
                 >
-                  {filter === "ACCESSORIES" ? "ACCESS." : filter}
+                  {filterLabels[filter]}
                 </button>
               );
             })}

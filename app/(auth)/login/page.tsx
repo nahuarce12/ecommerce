@@ -73,9 +73,9 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold uppercase tracking-tight">Login</h1>
+          <h1 className="text-2xl font-bold uppercase tracking-tight">Iniciar sesión</h1>
           <p className="text-xs text-muted-foreground mt-2 uppercase">
-            Enter your credentials
+            Ingresá tus credenciales
           </p>
         </div>
 
@@ -83,7 +83,7 @@ function LoginContent() {
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-xs text-green-800 uppercase">
-              Registration successful! Please check your email to confirm your account.
+              ¡Registro exitoso! Revisá tu email para confirmar tu cuenta.
             </AlertDescription>
           </Alert>
         )}
@@ -101,7 +101,7 @@ function LoginContent() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Continue with Google
+          Continuar con Google
         </Button>
 
         <div className="relative">
@@ -109,7 +109,7 @@ function LoginContent() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-muted-foreground">Or continue with email</span>
+            <span className="bg-white px-2 text-muted-foreground">O continuar con email</span>
           </div>
         </div>
 
@@ -133,7 +133,7 @@ function LoginContent() {
 
             <div>
               <label htmlFor="password" className="text-xs uppercase font-medium block mb-2">
-                Password
+                Contraseña
               </label>
               <Input
                 id="password"
@@ -158,13 +158,13 @@ function LoginContent() {
             className="w-full uppercase tracking-wide"
             disabled={loading}
           >
-            {loading ? "Loading..." : "Sign In"}
+            {loading ? "Cargando..." : "Ingresar"}
           </Button>
 
           <div className="text-center text-xs">
-            <span className="text-muted-foreground uppercase">Don&apos;t have an account? </span>
+            <span className="text-muted-foreground uppercase">¿No tenés cuenta? </span>
             <Link href="/signup" className="underline font-medium uppercase">
-              Sign Up
+              Crear cuenta
             </Link>
           </div>
         </form>

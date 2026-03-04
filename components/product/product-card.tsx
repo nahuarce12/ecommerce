@@ -34,6 +34,9 @@ export function ProductCard({ product }: ProductCardProps) {
         >
           {product.name}
         </h3>
+        <p className="mt-1 text-xs md:text-sm font-medium text-muted-foreground">
+          ${product.price.toLocaleString("es-AR")}
+        </p>
       </div>
     </div>
   );

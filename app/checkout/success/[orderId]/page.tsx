@@ -125,6 +125,19 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
     }
   };
 
+  const getPaymentStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending_payment":
+        return "pago pendiente";
+      case "paid":
+        return "pagado";
+      case "failed":
+        return "fallido";
+      default:
+        return status.replace("_", " ");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-20 md:pt-32 pb-12 md:pb-20">
       <div className="container max-w-4xl mx-auto px-4">
@@ -152,7 +165,7 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold uppercase text-sm">PAGO PENDIENTE</span>
                 <Badge className="bg-yellow-500 text-white uppercase text-xs">
-                  {order.payment_status.replace("_", " ")}
+                  {getPaymentStatusLabel(order.payment_status)}
                 </Badge>
               </div>
               <p className="text-xs uppercase leading-relaxed text-gray-700 mb-3">
@@ -170,7 +183,7 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold uppercase text-sm">PAGO APROBADO</span>
                 <Badge className="bg-green-600 text-white uppercase text-xs">
-                  {order.payment_status.replace("_", " ")}
+                  {getPaymentStatusLabel(order.payment_status)}
                 </Badge>
               </div>
               <p className="text-xs uppercase leading-relaxed text-gray-700">
@@ -185,7 +198,7 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold uppercase text-sm">PAGO FALLIDO</span>
                 <Badge className="bg-red-600 text-white uppercase text-xs">
-                  {order.payment_status.replace("_", " ")}
+                  {getPaymentStatusLabel(order.payment_status)}
                 </Badge>
               </div>
               <p className="text-xs uppercase leading-relaxed text-gray-700 mb-3">
