@@ -7,6 +7,7 @@ import { Category } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/admin/image-upload";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export default function CategoriesPage() {
     slug: "",
     description: "",
     size_measure_schema: [] as CategoryMeasurementFieldForm[],
+    size_guide_image_url: "",
   });
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -66,6 +68,7 @@ export default function CategoriesPage() {
               unit: field.unit?.toLowerCase() || "cm",
             }))
           : [],
+        size_guide_image_url: selectedCategory.size_guide_image_url || "",
       });
       setFormErrors({});
     } else {
@@ -77,7 +80,7 @@ export default function CategoriesPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("categories")
-      .select("id, name, slug, description, size_measure_schema, created_at, products(count)")
+      .select("id, name, slug, description, size_measure_schema, size_guide_image_url, created_at, products(count)")
       .order("name");
 
     if (data) setCategories(data as CategoryWithProductsCount[]);
@@ -90,6 +93,7 @@ export default function CategoriesPage() {
       slug: "",
       description: "",
       size_measure_schema: [],
+      size_guide_image_url: "",
     });
     setFormErrors({});
   };
@@ -158,6 +162,7 @@ export default function CategoriesPage() {
             label: field.label.trim(),
             unit: field.unit.trim() || "cm",
           })),
+        size_guide_image_url: formData.size_guide_image_url || null,
       }),
     });
 
@@ -237,6 +242,7 @@ export default function CategoriesPage() {
               <TableHead className="uppercase">Slug</TableHead>
               <TableHead className="uppercase">Description</TableHead>
               <TableHead className="uppercase">Sizing</TableHead>
+              <TableHead className="uppercase">Imagen guía</TableHead>
               <TableHead className="uppercase">Products</TableHead>
               <TableHead className="uppercase text-right">Actions</TableHead>
             </TableRow>
@@ -253,6 +259,9 @@ export default function CategoriesPage() {
                     {Array.isArray(category.size_measure_schema) && category.size_measure_schema.length > 0
                       ? `${category.size_measure_schema.length} campos`
                       : "-"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {category.size_guide_image_url ? "Sí" : "-"}
                   </TableCell>
                   <TableCell className="text-xs">{productCount}</TableCell>
                   <TableCell className="text-right">
@@ -322,6 +331,23 @@ export default function CategoriesPage() {
                 rows={3}
                 className="uppercase placeholder:uppercase"
               />
+            </div>
+
+            <div>
+              <label className="text-xs uppercase font-medium block mb-2">Imagen guía de medidas</label>
+              <ImageUpload
+                images={formData.size_guide_image_url ? [formData.size_guide_image_url] : []}
+                maxImages={1}
+                onChange={(images) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    size_guide_image_url: images[0] || "",
+                  }))
+                }
+              />
+              {formErrors.size_guide_image_url && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.size_guide_image_url}</p>
+              )}
             </div>
 
             <div className="space-y-3 border p-3">

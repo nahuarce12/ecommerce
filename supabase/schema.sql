@@ -24,6 +24,7 @@ create table public.categories (
   slug text not null unique,
   description text,
   size_measure_schema jsonb,
+  size_guide_image_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

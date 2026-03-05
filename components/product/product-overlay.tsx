@@ -66,6 +66,12 @@ export function ProductOverlay() {
   };
 
   const sizeSchema = parseSizeSchema();
+  const categoryData = selectedProduct?.categories
+    ? Array.isArray(selectedProduct.categories)
+      ? selectedProduct.categories[0]
+      : selectedProduct.categories
+    : null;
+  const sizeGuideImageUrl = categoryData?.size_guide_image_url || null;
   const sizeGuideRows = (selectedProduct?.product_sizes ?? [])
     .filter((productSize) => {
       if (!productSize.measurements || sizeSchema.length === 0) return false;
@@ -352,10 +358,21 @@ export function ProductOverlay() {
                 </div>
 
                 <div className="grid flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-2 md:p-6">
-                  <div className="flex min-h-[220px] items-center justify-center border bg-secondary/10 p-4 text-center">
-                    <p className="text-xs uppercase text-muted-foreground md:text-sm">
-                      Imagen de referencia de medidas
-                    </p>
+                  <div className="relative min-h-[220px] border bg-secondary/10 p-4">
+                    {sizeGuideImageUrl ? (
+                      <Image
+                        src={sizeGuideImageUrl}
+                        alt="Guía de medidas"
+                        fill
+                        className="object-contain p-3"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-center">
+                        <p className="text-xs uppercase text-muted-foreground md:text-sm">
+                          Esta categoría no tiene imagen guía configurada
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border">

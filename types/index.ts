@@ -31,11 +31,13 @@ export interface Product {
         name?: string;
         slug?: string;
         size_measure_schema?: SizeMeasurementField[] | null;
+        size_guide_image_url?: string | null;
       }
     | Array<{
         name?: string;
         slug?: string;
         size_measure_schema?: SizeMeasurementField[] | null;
+        size_guide_image_url?: string | null;
       }>
     | null;
   created_at: string;
@@ -47,6 +49,7 @@ export interface Category {
   slug: string;
   description: string | null;
   size_measure_schema?: SizeMeasurementField[] | null;
+  size_guide_image_url?: string | null;
   created_at: string;
 }
 

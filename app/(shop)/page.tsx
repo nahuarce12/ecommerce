@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Product, SizeMeasurementField } from "@/types";
 
 type ShopProduct = Product & {
-  categories: { slug: string; size_measure_schema?: SizeMeasurementField[] | null } | Array<{ slug: string; size_measure_schema?: SizeMeasurementField[] | null }> | null;
+  categories: { slug: string; size_measure_schema?: SizeMeasurementField[] | null; size_guide_image_url?: string | null } | Array<{ slug: string; size_measure_schema?: SizeMeasurementField[] | null; size_guide_image_url?: string | null }> | null;
 };
 
 export default function ShopPage() {
@@ -23,7 +23,7 @@ export default function ShopPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from("products")
-        .select("*, categories(slug, size_measure_schema), product_sizes(*)")
+        .select("*, categories(slug, size_measure_schema, size_guide_image_url), product_sizes(*)")
         .order("created_at", { ascending: false });
 
       if (data) {

@@ -315,6 +315,7 @@ export function validateCategoryInput(
         slug: string;
         description: string | null;
         size_measure_schema: Array<{ key: string; label: string; unit: string; order: number }> | null;
+        size_guide_image_url: string | null;
       };
     }
   | { success: false; error: string; fields: FieldErrors } {
@@ -328,6 +329,7 @@ export function validateCategoryInput(
   const name = sanitizeText(asTrimmedString(input.name), 160);
   const slug = asTrimmedString(input.slug).toLowerCase();
   const description = sanitizeOptionalText(input.description, 2000);
+  const sizeGuideImageUrl = sanitizeOptionalText(input.size_guide_image_url, 1000);
   const rawSchema = Array.isArray(input.size_measure_schema) ? input.size_measure_schema : [];
   const sizeMeasureSchema: Array<{ key: string; label: string; unit: string; order: number }> = [];
   const seenMeasurementKeys = new Set<string>();
@@ -342,6 +344,10 @@ export function validateCategoryInput(
 
   if (!slug || !SLUG_REGEX.test(slug)) {
     fields.slug = 'El slug debe estar en kebab-case minúscula';
+  }
+
+  if (sizeGuideImageUrl && !isValidHttpUrl(sizeGuideImageUrl)) {
+    fields.size_guide_image_url = 'La imagen guía debe ser una URL http/https válida';
   }
 
   for (const [index, rawField] of rawSchema.entries()) {
@@ -391,6 +397,7 @@ export function validateCategoryInput(
       slug,
       description,
       size_measure_schema: sizeMeasureSchema.length > 0 ? sizeMeasureSchema : null,
+      size_guide_image_url: sizeGuideImageUrl,
     },
   };
 }
