@@ -3,6 +3,14 @@ export interface ProductSize {
   product_id: string;
   size_label: string;
   stock: number;
+  measurements?: Record<string, number> | null;
+}
+
+export interface SizeMeasurementField {
+  key: string;
+  label: string;
+  unit?: string | null;
+  order?: number | null;
 }
 
 export interface Product {
@@ -18,6 +26,18 @@ export interface Product {
   sizes: string[];
   colors: string[];
   product_sizes?: ProductSize[];
+  categories?:
+    | {
+        name?: string;
+        slug?: string;
+        size_measure_schema?: SizeMeasurementField[] | null;
+      }
+    | Array<{
+        name?: string;
+        slug?: string;
+        size_measure_schema?: SizeMeasurementField[] | null;
+      }>
+    | null;
   created_at: string;
 }
 
@@ -26,6 +46,7 @@ export interface Category {
   name: string;
   slug: string;
   description: string | null;
+  size_measure_schema?: SizeMeasurementField[] | null;
   created_at: string;
 }
 

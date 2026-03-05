@@ -25,6 +25,12 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 
+interface CategoryMeasurementFieldForm {
+  key: string;
+  label: string;
+  unit: string;
+}
+
 type CategoryWithProductsCount = Category & {
   products: Array<{ count: number }>;
 };
@@ -38,6 +44,7 @@ export default function CategoriesPage() {
     name: "",
     slug: "",
     description: "",
+    size_measure_schema: [] as CategoryMeasurementFieldForm[],
   });
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -52,6 +59,13 @@ export default function CategoriesPage() {
         name: selectedCategory.name,
         slug: selectedCategory.slug,
         description: selectedCategory.description || "",
+        size_measure_schema: Array.isArray(selectedCategory.size_measure_schema)
+          ? selectedCategory.size_measure_schema.map((field) => ({
+              key: field.key,
+              label: field.label,
+              unit: field.unit?.toLowerCase() || "cm",
+            }))
+          : [],
       });
       setFormErrors({});
     } else {
@@ -63,7 +77,7 @@ export default function CategoriesPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("categories")
-      .select("id, name, slug, description, created_at, products(count)")
+      .select("id, name, slug, description, size_measure_schema, created_at, products(count)")
       .order("name");
 
     if (data) setCategories(data as CategoryWithProductsCount[]);
@@ -75,8 +89,38 @@ export default function CategoriesPage() {
       name: "",
       slug: "",
       description: "",
+      size_measure_schema: [],
     });
     setFormErrors({});
+  };
+
+  const addMeasurementField = () => {
+    setFormData((prev) => ({
+      ...prev,
+      size_measure_schema: [...prev.size_measure_schema, { key: "", label: "", unit: "cm" }],
+    }));
+  };
+
+  const removeMeasurementField = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      size_measure_schema: prev.size_measure_schema.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateMeasurementField = (
+    index: number,
+    field: keyof CategoryMeasurementFieldForm,
+    value: string,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      size_measure_schema: prev.size_measure_schema.map((measurement, i) => {
+        if (i !== index) return measurement;
+        const nextValue = field === "key" ? value.toLowerCase() : value;
+        return { ...measurement, [field]: nextValue };
+      }),
+    }));
   };
 
   const generateSlug = (name: string) => {
@@ -107,6 +151,13 @@ export default function CategoriesPage() {
         name: formData.name,
         slug: formData.slug,
         description: formData.description,
+        size_measure_schema: formData.size_measure_schema
+          .filter((field) => field.key.trim() || field.label.trim())
+          .map((field) => ({
+            key: field.key.trim(),
+            label: field.label.trim(),
+            unit: field.unit.trim() || "cm",
+          })),
       }),
     });
 
@@ -185,6 +236,7 @@ export default function CategoriesPage() {
               <TableHead className="uppercase">Name</TableHead>
               <TableHead className="uppercase">Slug</TableHead>
               <TableHead className="uppercase">Description</TableHead>
+              <TableHead className="uppercase">Sizing</TableHead>
               <TableHead className="uppercase">Products</TableHead>
               <TableHead className="uppercase text-right">Actions</TableHead>
             </TableRow>
@@ -197,6 +249,11 @@ export default function CategoriesPage() {
                   <TableCell className="font-medium uppercase text-xs">{category.name}</TableCell>
                   <TableCell className="text-xs">{category.slug}</TableCell>
                   <TableCell className="text-xs max-w-md truncate">{category.description || "-"}</TableCell>
+                  <TableCell className="text-xs">
+                    {Array.isArray(category.size_measure_schema) && category.size_measure_schema.length > 0
+                      ? `${category.size_measure_schema.length} campos`
+                      : "-"}
+                  </TableCell>
                   <TableCell className="text-xs">{productCount}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -223,7 +280,7 @@ export default function CategoriesPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={handleClose}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="uppercase">{selectedCategory ? "Edit Category" : "Add Category"}</DialogTitle>
             <DialogDescription className="uppercase text-xs">
@@ -265,6 +322,75 @@ export default function CategoriesPage() {
                 rows={3}
                 className="uppercase placeholder:uppercase"
               />
+            </div>
+
+            <div className="space-y-3 border p-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs uppercase font-medium">Campos de medidas por talle</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addMeasurementField}
+                  className="uppercase"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar campo
+                </Button>
+              </div>
+
+              {formData.size_measure_schema.length === 0 ? (
+                <p className="text-xs text-muted-foreground uppercase">
+                  Sin campos configurados. Ejemplo buzo: ancho, largo, manga.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {formData.size_measure_schema.map((field, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-4">
+                        <label className="text-[10px] uppercase text-muted-foreground block mb-1">Clave</label>
+                        <Input
+                          value={field.key}
+                          onChange={(e) => updateMeasurementField(index, "key", e.target.value)}
+                          placeholder="ancho"
+                          className="lowercase"
+                        />
+                      </div>
+                      <div className="col-span-5">
+                        <label className="text-[10px] uppercase text-muted-foreground block mb-1">Etiqueta</label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) => updateMeasurementField(index, "label", e.target.value)}
+                          placeholder="Ancho"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[10px] uppercase text-muted-foreground block mb-1">Unidad</label>
+                        <Input
+                          value={field.unit}
+                          onChange={(e) => updateMeasurementField(index, "unit", e.target.value)}
+                          placeholder="cm"
+                          className="lowercase"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMeasurementField(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {formErrors.size_measure_schema && (
+                <p className="text-xs text-red-600">{formErrors.size_measure_schema}</p>
+              )}
             </div>
 
             <DialogFooter>

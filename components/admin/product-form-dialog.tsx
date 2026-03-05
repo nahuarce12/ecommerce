@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Category } from "@/types";
+import { useState, useEffect, useMemo } from "react";
+import { Category, SizeMeasurementField } from "@/types";
 import { useAdminStore } from "@/store/admin-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,33 @@ import { toast } from "sonner";
 interface SizeStock {
   label: string;
   stock: string;
+  measurements: Record<string, string>;
 }
+
+const normalizeMeasurementKey = (key: string) => key.trim().toLowerCase();
+
+const parseCategorySchema = (schema: Category["size_measure_schema"]): SizeMeasurementField[] => {
+  if (!Array.isArray(schema)) return [];
+
+  return schema
+    .filter((item): item is SizeMeasurementField => {
+      return (
+        !!item &&
+        typeof item === "object" &&
+        typeof item.key === "string" &&
+        item.key.trim().length > 0 &&
+        typeof item.label === "string" &&
+        item.label.trim().length > 0
+      );
+    })
+    .map((item, index) => ({
+      ...item,
+      key: normalizeMeasurementKey(item.key),
+      order: typeof item.order === "number" ? item.order : index,
+      unit: item.unit?.trim() || "cm",
+    }))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+};
 
 interface ProductFormDialogProps {
   onSuccess: () => void;
@@ -53,6 +79,14 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
   const [sizeStocks, setSizeStocks] = useState<SizeStock[]>([]);
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === formData.category_id) ?? null,
+    [categories, formData.category_id],
+  );
+  const measureFields = useMemo(
+    () => parseCategorySchema(selectedCategory?.size_measure_schema),
+    [selectedCategory],
+  );
 
   useEffect(() => {
     if (selectedProduct) {
@@ -74,6 +108,16 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
           selectedProduct.product_sizes.map((ps) => ({
             label: ps.size_label,
             stock: ps.stock.toString(),
+            measurements: Object.entries(ps.measurements ?? {}).reduce<Record<string, string>>(
+              (acc, [key, value]) => {
+                const normalizedKey = normalizeMeasurementKey(key);
+                if (!normalizedKey) return acc;
+                if (typeof value !== "number") return acc;
+                acc[normalizedKey] = value.toString();
+                return acc;
+              },
+              {},
+            ),
           }))
         );
       } else {
@@ -118,7 +162,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
   };
 
   const addSizeRow = () => {
-    setSizeStocks((prev) => [...prev, { label: "", stock: "0" }]);
+    setSizeStocks((prev) => [...prev, { label: "", stock: "0", measurements: {} }]);
   };
 
   const removeSizeRow = (index: number) => {
@@ -130,6 +174,49 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
   };
+
+  const updateSizeMeasurement = (index: number, measurementKey: string, value: string) => {
+    const normalizedKey = normalizeMeasurementKey(measurementKey);
+    setSizeStocks((prev) =>
+      prev.map((row, i) => {
+        if (i !== index) return row;
+
+        const nextMeasurements = { ...row.measurements };
+        if (!value.trim()) {
+          delete nextMeasurements[normalizedKey];
+        } else {
+          nextMeasurements[normalizedKey] = value;
+        }
+
+        return { ...row, measurements: nextMeasurements };
+      }),
+    );
+  };
+
+  useEffect(() => {
+    const allowedKeys = new Set(measureFields.map((field) => normalizeMeasurementKey(field.key)));
+
+    setSizeStocks((prev) =>
+      prev.map((row) => {
+        if (allowedKeys.size === 0) {
+          return { ...row, measurements: {} };
+        }
+
+        const filteredMeasurements = Object.entries(row.measurements).reduce<Record<string, string>>(
+          (acc, [key, value]) => {
+            const normalizedKey = normalizeMeasurementKey(key);
+            if (allowedKeys.has(normalizedKey)) {
+              acc[normalizedKey] = value;
+            }
+            return acc;
+          },
+          {},
+        );
+
+        return { ...row, measurements: filteredMeasurements };
+      }),
+    );
+  }, [measureFields]);
 
   const getTotalSizeStock = () => {
     return sizeStocks.reduce((sum, s) => sum + (parseInt(s.stock) || 0), 0);
@@ -154,7 +241,23 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
       sizeStocks: hasSizes
         ? sizeStocks
             .filter((s) => s.label.trim())
-            .map((s) => ({ label: s.label.trim(), stock: s.stock }))
+            .map((s) => {
+              const measurements = Object.entries(s.measurements).reduce<Record<string, number>>(
+                (acc, [key, rawValue]) => {
+                  const value = Number(rawValue);
+                  if (!Number.isFinite(value) || value < 0) return acc;
+                  acc[normalizeMeasurementKey(key)] = Number(value.toFixed(2));
+                  return acc;
+                },
+                {},
+              );
+
+              return {
+                label: s.label.trim(),
+                stock: s.stock,
+                measurements: Object.keys(measurements).length > 0 ? measurements : null,
+              };
+            })
         : [],
     };
 
@@ -303,7 +406,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                   onChange={(e) => {
                     setHasSizes(e.target.checked);
                     if (e.target.checked && sizeStocks.length === 0) {
-                      setSizeStocks([{ label: "", stock: "0" }]);
+                      setSizeStocks([{ label: "", stock: "0", measurements: {} }]);
                     }
                   }}
                   className="cursor-pointer"
@@ -343,8 +446,14 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                     Stock total: {getTotalSizeStock()}
                   </span>
                 </div>
+                {measureFields.length === 0 && (
+                  <p className="text-[11px] uppercase text-muted-foreground">
+                    Esta categoría no tiene campos de medidas configurados. Podés agregarlos en Admin &gt; Categories.
+                  </p>
+                )}
                 {sizeStocks.map((sizeRow, index) => (
-                  <div key={index} className="flex gap-2 items-center">
+                  <div key={index} className="space-y-2 border p-2">
+                    <div className="flex gap-2 items-center">
                     <Input
                       value={sizeRow.label}
                       onChange={(e) => updateSizeRow(index, "label", e.target.value)}
@@ -368,6 +477,29 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </div>
+
+                    {measureFields.length > 0 && (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        {measureFields.map((field) => (
+                          <div key={`${index}-${field.key}`}>
+                            <label className="text-[10px] uppercase text-muted-foreground block mb-1">
+                              {field.label} ({field.unit ?? "cm"})
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={sizeRow.measurements[normalizeMeasurementKey(field.key)] ?? ""}
+                              onChange={(e) =>
+                                updateSizeMeasurement(index, field.key, e.target.value)
+                              }
+                              placeholder={field.label}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {formErrors.sizeStocks && <p className="text-xs text-red-600 mt-1">{formErrors.sizeStocks}</p>}

@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateProductInput } from "@/lib/validators";
 
+type CategorySchemaField = { key: string };
+
+const isSchemaField = (value: unknown): value is CategorySchemaField => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const key = (value as { key?: unknown }).key;
+  return typeof key === "string" && key.trim().length > 0;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -26,7 +34,44 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validation = validateProductInput(body);
+    const preValidation = validateProductInput(body);
+
+    if (!preValidation.success) {
+      return NextResponse.json(
+        { error: preValidation.error, fields: preValidation.fields },
+        { status: 400 },
+      );
+    }
+
+    let allowedMeasurementKeys: string[] = [];
+
+    if (preValidation.data.category_id) {
+      const { data: category } = await supabase
+        .from("categories")
+        .select("id, size_measure_schema")
+        .eq("id", preValidation.data.category_id)
+        .single();
+
+      if (!category) {
+        return NextResponse.json(
+          { error: "CATEGORÍA INVÁLIDA", fields: { category_id: "Categoría inexistente" } },
+          { status: 400 },
+        );
+      }
+
+      const rawSchema = Array.isArray(category.size_measure_schema)
+        ? category.size_measure_schema
+        : [];
+
+      allowedMeasurementKeys = rawSchema
+        .filter(isSchemaField)
+        .map((field) => field.key.trim().toLowerCase())
+        .filter(Boolean);
+    }
+
+    const validation = validateProductInput(body, {
+      allowedMeasurementKeys,
+    });
 
     if (!validation.success) {
       return NextResponse.json(
@@ -47,21 +92,6 @@ export async function POST(request: NextRequest) {
       sizes: validation.data.sizes,
       colors: validation.data.colors,
     };
-
-    if (validation.data.category_id) {
-      const { data: category } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("id", validation.data.category_id)
-        .single();
-
-      if (!category) {
-        return NextResponse.json(
-          { error: "CATEGORÍA INVÁLIDA", fields: { category_id: "Categoría inexistente" } },
-          { status: 400 },
-        );
-      }
-    }
 
     let productId = validation.data.id;
 
@@ -114,6 +144,7 @@ export async function POST(request: NextRequest) {
         product_id: productId,
         size_label: size.label,
         stock: size.stock,
+        measurements: size.measurements,
       }));
 
       const { error: insertSizesError } = await supabase.from("product_sizes").insert(sizeRows);

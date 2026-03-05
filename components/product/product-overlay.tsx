@@ -7,6 +7,15 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
 import { useCartStore } from "@/store/cart-store";
 import { Button } from "@/components/ui/button";
+import { SizeMeasurementField } from "@/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Accordion,
   AccordionContent,
@@ -20,7 +29,63 @@ export function ProductOverlay() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const isOutOfStock = selectedProduct ? selectedProduct.stock <= 0 : false;
+
+  const normalizeMeasurementKey = (key: string) => key.trim().toLowerCase();
+
+  const parseSizeSchema = (): SizeMeasurementField[] => {
+    if (!selectedProduct?.categories) return [];
+
+    const categoryData = Array.isArray(selectedProduct.categories)
+      ? selectedProduct.categories[0]
+      : selectedProduct.categories;
+
+    if (!categoryData?.size_measure_schema || !Array.isArray(categoryData.size_measure_schema)) {
+      return [];
+    }
+
+    return categoryData.size_measure_schema
+      .filter((field): field is SizeMeasurementField => {
+        return (
+          !!field &&
+          typeof field === "object" &&
+          typeof field.key === "string" &&
+          field.key.trim().length > 0 &&
+          typeof field.label === "string" &&
+          field.label.trim().length > 0
+        );
+      })
+      .map((field, index) => ({
+        ...field,
+        key: normalizeMeasurementKey(field.key),
+        unit: field.unit?.trim() || "cm",
+        order: typeof field.order === "number" ? field.order : index,
+      }))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  };
+
+  const sizeSchema = parseSizeSchema();
+  const sizeGuideRows = (selectedProduct?.product_sizes ?? [])
+    .filter((productSize) => {
+      if (!productSize.measurements || sizeSchema.length === 0) return false;
+      return sizeSchema.some((field) => {
+        const value = productSize.measurements?.[normalizeMeasurementKey(field.key)];
+        return typeof value === "number" && Number.isFinite(value);
+      });
+    })
+    .map((productSize) => {
+      const rowMeasurements = sizeSchema.reduce<Record<string, number | null>>((acc, field) => {
+        const value = productSize.measurements?.[normalizeMeasurementKey(field.key)];
+        acc[field.key] = typeof value === "number" && Number.isFinite(value) ? value : null;
+        return acc;
+      }, {});
+
+      return {
+        size: productSize.size_label,
+        measurements: rowMeasurements,
+      };
+    });
 
   const getSizeStock = (size: string): number => {
     if (!selectedProduct?.product_sizes || selectedProduct.product_sizes.length === 0) {
@@ -35,6 +100,7 @@ export function ProductOverlay() {
     setSelectedSize(null);
     setSelectedColor(null);
     setCurrentImageIndex(0);
+    setIsSizeGuideOpen(false);
   }, [selectedProduct]);
 
   const handlePrevImage = () => {
@@ -188,7 +254,11 @@ export function ProductOverlay() {
               <div className="space-y-3 md:space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs md:text-sm font-medium uppercase">Seleccionar talle</span>
-                  <button className="text-[10px] md:text-xs underline uppercase text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setIsSizeGuideOpen(true)}
+                    className="text-[10px] md:text-xs underline uppercase text-muted-foreground"
+                  >
                     Guía de talles
                   </button>
                 </div>
@@ -266,6 +336,68 @@ export function ProductOverlay() {
             </div>
           </div>
           </div>
+
+          {isSizeGuideOpen && (
+            <div className="fixed inset-0 z-[60] bg-black/50 px-4 py-8 md:p-10">
+              <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden border bg-background">
+                <div className="flex items-center justify-between border-b px-4 py-3 md:px-6">
+                  <h3 className="text-xs font-semibold uppercase md:text-sm">Guía de talles</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsSizeGuideOpen(false)}
+                    className="p-2 hover:bg-accent"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="grid flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-2 md:p-6">
+                  <div className="flex min-h-[220px] items-center justify-center border bg-secondary/10 p-4 text-center">
+                    <p className="text-xs uppercase text-muted-foreground md:text-sm">
+                      Imagen de referencia de medidas
+                    </p>
+                  </div>
+
+                  <div className="border">
+                    {sizeSchema.length === 0 ? (
+                      <div className="p-4 text-xs uppercase text-muted-foreground md:text-sm">
+                        Esta categoría todavía no tiene campos de medidas configurados.
+                      </div>
+                    ) : sizeGuideRows.length === 0 ? (
+                      <div className="p-4 text-xs uppercase text-muted-foreground md:text-sm">
+                        Este producto no tiene medidas cargadas por talle.
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="uppercase text-[10px] md:text-xs">Talle</TableHead>
+                            {sizeSchema.map((field, index) => (
+                              <TableHead key={field.key} className="uppercase text-[10px] md:text-xs text-center">
+                                {String.fromCharCode(65 + index)}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sizeGuideRows.map((row) => (
+                            <TableRow key={row.size}>
+                              <TableCell className="text-xs uppercase md:text-sm font-medium">{row.size}</TableCell>
+                              {sizeSchema.map((field) => (
+                                <TableCell key={`${row.size}-${field.key}`} className="text-xs text-center md:text-sm">
+                                  {row.measurements[field.key] !== null ? `${row.measurements[field.key]} ${field.unit ?? "cm"}` : "-"}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

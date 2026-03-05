@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       name: validation.data.name,
       slug: validation.data.slug,
       description: validation.data.description,
+      size_measure_schema: validation.data.size_measure_schema,
     };
 
     const query = validation.data.id

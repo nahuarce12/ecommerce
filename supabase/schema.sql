@@ -23,6 +23,7 @@ create table public.categories (
   name text not null,
   slug text not null unique,
   description text,
+  size_measure_schema jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -48,6 +49,7 @@ create table public.product_sizes (
   product_id uuid references public.products(id) on delete cascade not null,
   size_label text not null,
   stock integer not null default 0,
+  measurements jsonb,
   unique(product_id, size_label)
 );
 
