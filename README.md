@@ -28,16 +28,28 @@ Set these variables before running MercadoPago flows:
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 MP_ACCESS_TOKEN=TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 MP_WEBHOOK_SECRET=xxxxxxxx
+PRELAUNCH_TOKEN_SECRET=replace_with_a_strong_random_secret
 MP_EXCLUDE_ACCOUNT_MONEY=true
 MP_USE_SANDBOX_INIT_POINT=false
 ```
 
 - `NEXT_PUBLIC_APP_URL` is required in production for payment preference and callback URLs.
 - `MP_WEBHOOK_SECRET` is required in production to validate MercadoPago webhook signatures.
+- `PRELAUNCH_TOKEN_SECRET` signs pre-launch access cookies (required to unlock gated pages securely).
 - Use test credentials for sandbox tests and a buyer account different from the account used to create the preference.
 - `MP_EXCLUDE_ACCOUNT_MONEY=true` helps avoid sandbox wallet/account-money issues during test checkouts.
 - Keep `MP_USE_SANDBOX_INIT_POINT=false` unless you explicitly need sandbox redirect URL.
 - Do not hardcode credentials in scripts or route files.
+
+## Prelaunch Control (Admin)
+
+- Run migrations so `prelaunch_settings` and `get_prelaunch_public_settings()` are available.
+- Open `/admin/prelaunch` to:
+  - activate/deactivate lock mode,
+  - configure launch date/time,
+  - rotate the global password.
+- While prelaunch is active, all pages are gated by password + countdown.
+- When launch time is reached, the site opens automatically.
 
 ## Learn More
 
