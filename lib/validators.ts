@@ -307,7 +307,17 @@ export function validateProfileInput(
 export function validateCategoryInput(
   input: unknown,
 ):
-  | { success: true; data: { id?: string; name: string; slug: string; description: string | null } }
+  | {
+      success: true;
+      data: {
+        id?: string;
+        name: string;
+        slug: string;
+        description: string | null;
+        size_measure_schema: Array<{ key: string; label: string; unit: string; order: number }> | null;
+        size_guide_image_url: string | null;
+      };
+    }
   | { success: false; error: string; fields: FieldErrors } {
   const fields: FieldErrors = {};
 
@@ -319,6 +329,10 @@ export function validateCategoryInput(
   const name = sanitizeText(asTrimmedString(input.name), 160);
   const slug = asTrimmedString(input.slug).toLowerCase();
   const description = sanitizeOptionalText(input.description, 2000);
+  const sizeGuideImageUrl = sanitizeOptionalText(input.size_guide_image_url, 1000);
+  const rawSchema = Array.isArray(input.size_measure_schema) ? input.size_measure_schema : [];
+  const sizeMeasureSchema: Array<{ key: string; label: string; unit: string; order: number }> = [];
+  const seenMeasurementKeys = new Set<string>();
 
   if (id && !isUuid(id)) {
     fields.id = 'ID inválido';
@@ -332,6 +346,45 @@ export function validateCategoryInput(
     fields.slug = 'El slug debe estar en kebab-case minúscula';
   }
 
+  if (sizeGuideImageUrl && !isValidHttpUrl(sizeGuideImageUrl)) {
+    fields.size_guide_image_url = 'La imagen guía debe ser una URL http/https válida';
+  }
+
+  for (const [index, rawField] of rawSchema.entries()) {
+    if (!isRecord(rawField)) {
+      fields.size_measure_schema = 'El esquema de medidas tiene un formato inválido';
+      break;
+    }
+
+    const key = sanitizeText(asTrimmedString(rawField.key), 40).toLowerCase();
+    const label = sanitizeText(asTrimmedString(rawField.label), 60);
+    const unit = sanitizeText(asTrimmedString(rawField.unit), 12).toLowerCase() || 'cm';
+    const order = toInteger(rawField.order);
+
+    if (!key || !/^[a-z0-9_]+$/.test(key)) {
+      fields.size_measure_schema = 'Cada campo de medida debe tener una clave válida (a-z, 0-9, _)';
+      break;
+    }
+
+    if (!label || label.length > 60) {
+      fields.size_measure_schema = 'Cada campo de medida debe tener una etiqueta de hasta 60 caracteres';
+      break;
+    }
+
+    if (!unit || unit.length > 12) {
+      fields.size_measure_schema = 'La unidad de medida es inválida';
+      break;
+    }
+
+    if (seenMeasurementKeys.has(key)) {
+      fields.size_measure_schema = 'Las claves de medidas no pueden repetirse';
+      break;
+    }
+
+    seenMeasurementKeys.add(key);
+    sizeMeasureSchema.push({ key, label, unit, order: order !== null && order >= 0 ? order : index });
+  }
+
   if (Object.keys(fields).length > 0) {
     return { success: false, error: 'Revisá los datos de la categoría', fields };
   }
@@ -343,12 +396,15 @@ export function validateCategoryInput(
       name,
       slug,
       description,
+      size_measure_schema: sizeMeasureSchema.length > 0 ? sizeMeasureSchema : null,
+      size_guide_image_url: sizeGuideImageUrl,
     },
   };
 }
 
 export function validateProductInput(
   input: unknown,
+  options?: { allowedMeasurementKeys?: string[] },
 ):
   | {
       success: true;
@@ -364,7 +420,7 @@ export function validateProductInput(
         images: string[];
         sizes: string[];
         colors: string[];
-        sizeStocks: Array<{ label: string; stock: number }>;
+        sizeStocks: Array<{ label: string; stock: number; measurements: Record<string, number> | null }>;
       };
     }
   | { success: false; error: string; fields: FieldErrors } {
@@ -443,7 +499,12 @@ export function validateProductInput(
   }
 
   const rawSizeStocks = Array.isArray(input.sizeStocks) ? input.sizeStocks : [];
-  const sizeStocks: Array<{ label: string; stock: number }> = [];
+  const sizeStocks: Array<{ label: string; stock: number; measurements: Record<string, number> | null }> = [];
+  const allowedMeasurementKeys = new Set(
+    (options?.allowedMeasurementKeys ?? [])
+      .map((key) => sanitizeText(asTrimmedString(key), 40).toLowerCase())
+      .filter(Boolean),
+  );
   const seenLabels = new Set<string>();
 
   for (const sizeStock of rawSizeStocks) {
@@ -470,8 +531,46 @@ export function validateProductInput(
       break;
     }
 
+    const rawMeasurements = isRecord(sizeStock.measurements) ? sizeStock.measurements : null;
+    let normalizedMeasurements: Record<string, number> | null = null;
+
+    if (rawMeasurements) {
+      normalizedMeasurements = {};
+
+      for (const [rawKey, rawValue] of Object.entries(rawMeasurements)) {
+        const measurementKey = sanitizeText(asTrimmedString(rawKey), 40).toLowerCase();
+        if (!measurementKey) {
+          fields.sizeStocks = 'Las medidas por talle tienen un formato inválido';
+          break;
+        }
+
+        if (allowedMeasurementKeys.size > 0 && !allowedMeasurementKeys.has(measurementKey)) {
+          fields.sizeStocks = 'Las medidas incluyen campos no permitidos para la categoría seleccionada';
+          break;
+        }
+
+        const measurementValue =
+          typeof rawValue === 'number' ? rawValue : Number(asTrimmedString(rawValue));
+
+        if (!Number.isFinite(measurementValue) || measurementValue < 0) {
+          fields.sizeStocks = 'Cada medida debe ser un número mayor o igual a 0';
+          break;
+        }
+
+        normalizedMeasurements[measurementKey] = Number(measurementValue.toFixed(2));
+      }
+
+      if (Object.keys(fields).length > 0) {
+        break;
+      }
+
+      if (normalizedMeasurements && Object.keys(normalizedMeasurements).length === 0) {
+        normalizedMeasurements = null;
+      }
+    }
+
     seenLabels.add(label);
-    sizeStocks.push({ label, stock });
+    sizeStocks.push({ label, stock, measurements: normalizedMeasurements });
   }
 
   const hasSizes = sizeStocks.length > 0;

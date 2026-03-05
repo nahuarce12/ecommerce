@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
       name: validation.data.name,
       slug: validation.data.slug,
       description: validation.data.description,
+      size_measure_schema: validation.data.size_measure_schema,
+      size_guide_image_url: validation.data.size_guide_image_url,
     };
 
     const query = validation.data.id
