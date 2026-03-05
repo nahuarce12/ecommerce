@@ -6,7 +6,8 @@ import {
   Package, 
   FolderTree, 
   ShoppingCart, 
-  Users 
+  Users,
+  Shield,
 } from "lucide-react";
 import { AdminLogoutButton } from "@/components/admin/admin-logout-button";
 
@@ -37,6 +38,7 @@ export default async function AdminLayout({
 
   const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/prelaunch", label: "Prelaunch", icon: Shield },
     { href: "/admin/products", label: "Products", icon: Package },
     { href: "/admin/categories", label: "Categories", icon: FolderTree },
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },

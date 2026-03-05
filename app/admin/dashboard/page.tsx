@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, AlertTriangle, ShoppingCart, DollarSign } from "lucide-react";
+import { Package, AlertTriangle, ShoppingCart, DollarSign, Shield } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -139,6 +141,23 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="uppercase flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Prelaunch Access
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-xs uppercase text-muted-foreground">
+            Configurá bloqueo con contraseña y cuenta regresiva
+          </p>
+          <Button asChild className="uppercase">
+            <Link href="/admin/prelaunch">Administrar acceso</Link>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
