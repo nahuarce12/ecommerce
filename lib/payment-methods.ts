@@ -42,10 +42,10 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
  * TODO: Replace with actual bank account details
  */
 export const BANK_INFO = {
-  cbu: '0000003100010000000000',
-  alias: 'SUPPLY.STORE',
-  holder: 'Supply Store SRL',
-  bank: 'Banco Galicia',
+  cbu: '3840200500000000306764',
+  alias: 'supplyworld',
+  holder: 'Nahuel Lautaro Arce',
+  bank: 'Uala Bank S.A.U',
   accountType: 'Cuenta Corriente',
 } as const;
 
