@@ -10,6 +10,7 @@ import { Profile } from "@/types";
 import { Separator } from "@/components/ui/separator";
 import { ProfileEditForm } from "@/components/account/profile-edit-form";
 import { RecentOrdersSkeleton } from "@/components/account/recent-orders-skeleton";
+import { formatMoney } from "@/lib/format-money";
 
 interface AccountClientProps {
   user: User;
@@ -201,7 +202,7 @@ export function AccountClient({ user, profile: initialProfile }: AccountClientPr
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold">${order.total.toLocaleString()}</p>
+                      <p className="text-sm font-bold">${formatMoney(order.total)}</p>
                       <Button
                         size="sm"
                         variant="outline"

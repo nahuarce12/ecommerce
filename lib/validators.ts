@@ -426,6 +426,29 @@ export function validateProductInput(
   | { success: false; error: string; fields: FieldErrors } {
   const fields: FieldErrors = {};
 
+  const parseLocalizedPrice = (value: unknown): number => {
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    const raw = asTrimmedString(value).replace(/\s+/g, '');
+    if (!raw) {
+      return Number.NaN;
+    }
+
+    let normalized = raw;
+
+    if (raw.includes('.') && raw.includes(',')) {
+      normalized = raw.replace(/\./g, '').replace(',', '.');
+    } else if (raw.includes(',')) {
+      normalized = raw.replace(',', '.');
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) {
+      normalized = raw.replace(/\./g, '');
+    }
+
+    return Number(normalized);
+  };
+
   if (!isRecord(input)) {
     return { success: false, error: 'Entrada inválida', fields: { form: 'Datos inválidos' } };
   }
@@ -435,7 +458,7 @@ export function validateProductInput(
   const slug = asTrimmedString(input.slug).toLowerCase();
   const description = sanitizeOptionalText(input.description, 2000);
   const brand = sanitizeText(asTrimmedString(input.brand), 80);
-  const rawPrice = typeof input.price === 'number' ? input.price : Number(asTrimmedString(input.price));
+  const rawPrice = parseLocalizedPrice(input.price);
   const categoryId = asTrimmedString(input.category_id);
 
   if (id && !isUuid(id)) {

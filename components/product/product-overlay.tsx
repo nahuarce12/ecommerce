@@ -7,6 +7,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
 import { useCartStore } from "@/store/cart-store";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/format-money";
 import { SizeMeasurementField } from "@/types";
 import {
   Table,
@@ -31,6 +32,12 @@ export function ProductOverlay() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const isOutOfStock = selectedProduct ? selectedProduct.stock <= 0 : false;
+  const colorOptions = selectedProduct?.colors ?? [];
+  const sizeOptions = selectedProduct?.sizes ?? [];
+  const hasColorOptions = colorOptions.length > 0;
+  const hasSizeOptions = sizeOptions.length > 0;
+  const missingColorSelection = hasColorOptions && !selectedColor;
+  const missingSizeSelection = hasSizeOptions && !selectedSize;
 
   const normalizeMeasurementKey = (key: string) => key.trim().toLowerCase();
 
@@ -136,8 +143,12 @@ export function ProductOverlay() {
   }, [selectedProduct]);
 
   const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor || !selectedProduct) return;
-    addItem(selectedProduct, selectedSize, selectedColor);
+    if (!selectedProduct || missingColorSelection || missingSizeSelection) return;
+
+    const sizeToAdd = hasSizeOptions ? selectedSize : "ÚNICO";
+    const colorToAdd = hasColorOptions ? selectedColor : "DEFAULT";
+
+    addItem(selectedProduct, sizeToAdd ?? "ÚNICO", colorToAdd ?? "DEFAULT");
     toggleCart();
     setSelectedProduct(null);
   };
@@ -231,67 +242,71 @@ export function ProductOverlay() {
                   {selectedProduct.name}
                 </h2>
                 <p className="text-base md:text-xl text-muted-foreground">
-                  ${selectedProduct.price}
+                  ${formatMoney(selectedProduct.price)}
                 </p>
               </div>
 
               {/* Color Selector */}
-              <div className="space-y-3 md:space-y-4">
-                <span className="text-xs md:text-sm font-medium uppercase">Seleccionar color</span>
-                <div className="flex gap-2 flex-wrap">
-                  {selectedProduct.colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`
-                        px-4 h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors uppercase
-                        ${selectedColor === color 
-                          ? "bg-foreground text-background border-foreground" 
-                          : "hover:bg-accent border-input"}
-                      `}
-                    >
-                      {color}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Size Selector */}
-              <div className="space-y-3 md:space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm font-medium uppercase">Seleccionar talle</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsSizeGuideOpen(true)}
-                    className="text-[10px] md:text-xs underline uppercase text-muted-foreground"
-                  >
-                    Guía de talles
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {selectedProduct.sizes.map((size) => {
-                    const sizeStock = getSizeStock(size);
-                    const sizeOutOfStock = sizeStock <= 0;
-                    return (
+              {hasColorOptions && (
+                <div className="space-y-3 md:space-y-4">
+                  <span className="text-xs md:text-sm font-medium uppercase">Seleccionar color</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {colorOptions.map((color) => (
                       <button
-                        key={size}
-                        onClick={() => !sizeOutOfStock && setSelectedSize(size)}
-                        disabled={sizeOutOfStock}
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
                         className={`
-                          h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors relative
-                          ${sizeOutOfStock
-                            ? "opacity-40 cursor-not-allowed line-through border-input"
-                            : selectedSize === size 
-                              ? "bg-foreground text-background border-foreground" 
-                              : "hover:bg-accent border-input"}
+                          px-4 h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors uppercase
+                          ${selectedColor === color 
+                            ? "bg-foreground text-background border-foreground" 
+                            : "hover:bg-accent border-input"}
                         `}
                       >
-                        {size}
+                        {color}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Size Selector */}
+              {hasSizeOptions && (
+                <div className="space-y-3 md:space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs md:text-sm font-medium uppercase">Seleccionar talle</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSizeGuideOpen(true)}
+                      className="text-[10px] md:text-xs underline uppercase text-muted-foreground"
+                    >
+                      Guía de talles
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {sizeOptions.map((size) => {
+                      const sizeStock = getSizeStock(size);
+                      const sizeOutOfStock = sizeStock <= 0;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => !sizeOutOfStock && setSelectedSize(size)}
+                          disabled={sizeOutOfStock}
+                          className={`
+                            h-9 md:h-10 border text-xs md:text-sm font-medium transition-colors relative
+                            ${sizeOutOfStock
+                              ? "opacity-40 cursor-not-allowed line-through border-input"
+                              : selectedSize === size 
+                                ? "bg-foreground text-background border-foreground" 
+                                : "hover:bg-accent border-input"}
+                          `}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Add to Cart / Make Order */}
               {isOutOfStock ? (
@@ -307,10 +322,10 @@ export function ProductOverlay() {
               ) : (
                 <Button 
                   className="w-full h-10 md:h-12 text-sm md:text-base uppercase tracking-wide"
-                  disabled={!selectedSize || !selectedColor}
+                  disabled={missingColorSelection || missingSizeSelection}
                   onClick={handleAddToCart}
                 >
-                  {!selectedColor ? "Seleccioná un color" : !selectedSize ? "Seleccioná un talle" : "Agregar al carrito"}
+                  {missingColorSelection ? "Seleccioná un color" : missingSizeSelection ? "Seleccioná un talle" : "Agregar al carrito"}
                 </Button>
               )}
 
@@ -325,17 +340,15 @@ export function ProductOverlay() {
                 <AccordionItem value="details">
                   <AccordionTrigger className="uppercase text-xs md:text-sm">Detalles</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-xs md:text-sm">
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>100% algodón</li>
-                      <li>Hecho en China</li>
-                      <li>Marca: {selectedProduct.brand}</li>
-                    </ul>
+                      <li>Verifica la tabla de talles del producto que desea antes de comprar.</li>
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="shipping">
                   <AccordionTrigger className="uppercase text-xs md:text-sm">Envíos y devoluciones</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground text-xs md:text-sm">
-                    Envío gratis en pedidos mayores a $200. Devoluciones aceptadas dentro de los 14 días.
+                    <li>Envío gratis en pedidos mayores a $150.000,00</li>
+                    <li>Devoluciones aceptadas dentro de los 14 días.</li>
+                    <li>El envío de nuestras prendas demora de 2 a 5 días hábiles aproximadamente.</li>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>

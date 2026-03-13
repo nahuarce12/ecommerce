@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatMoney } from "@/lib/format-money";
 import { toast } from "sonner";
 
 interface Order {
@@ -295,7 +296,7 @@ export default function OrdersPage() {
                     {order.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-xs">${order.total.toFixed(2)}</TableCell>
+                <TableCell className="text-xs">${formatMoney(order.total)}</TableCell>
                 <TableCell className="text-xs font-mono">
                   {order.tracking_number || "-"}
                 </TableCell>
@@ -434,10 +435,10 @@ export default function OrdersPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold">
-                          ${(item.price_at_purchase * item.quantity).toFixed(2)}
+                          ${formatMoney(item.price_at_purchase * item.quantity)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          ${item.price_at_purchase.toFixed(2)} each
+                          ${formatMoney(item.price_at_purchase)} each
                         </p>
                       </div>
                     </div>
@@ -445,7 +446,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex justify-between items-center border-t pt-3 mt-3">
                   <span className="font-bold uppercase">Total</span>
-                  <span className="text-xl font-bold">${selectedOrder.total.toFixed(2)}</span>
+                  <span className="text-xl font-bold">${formatMoney(selectedOrder.total)}</span>
                 </div>
               </div>
             </div>

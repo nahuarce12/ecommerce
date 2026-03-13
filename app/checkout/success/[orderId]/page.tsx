@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye, CreditCard } from "lucide-react";
 import { BANK_INFO, WHATSAPP_NUMBER, generateWhatsAppLink } from "@/lib/payment-methods";
+import { formatMoney } from "@/lib/format-money";
 import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
 import Image from "next/image";
 import Link from "next/link";
@@ -237,12 +238,12 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
                       {item.color} / TALLE: {item.size}
                     </p>
                     <p className="text-sm">
-                      ${item.price_at_purchase.toLocaleString()} x {item.quantity}
+                      ${formatMoney(item.price_at_purchase)} x {item.quantity}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">
-                      ${(item.price_at_purchase * item.quantity).toLocaleString()}
+                      ${formatMoney(item.price_at_purchase * item.quantity)}
                     </p>
                   </div>
                 </div>
@@ -253,7 +254,7 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="uppercase">SUBTOTAL</span>
-                  <span>${subtotal.toLocaleString()}</span>
+                  <span>${formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="uppercase flex items-center gap-2">
@@ -266,14 +267,14 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
                         GRATIS
                       </Badge>
                     ) : (
-                      `$${order.shipping_cost.toLocaleString()}`
+                      `$${formatMoney(order.shipping_cost)}`
                     )}
                   </span>
                 </div>
                 <Separator className="bg-gray-200" />
                 <div className="flex justify-between text-lg font-bold">
                   <span className="uppercase">TOTAL</span>
-                  <span>${order.total.toLocaleString()}</span>
+                  <span>${formatMoney(order.total)}</span>
                 </div>
               </div>
             </div>

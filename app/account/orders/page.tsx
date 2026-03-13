@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, Eye } from "lucide-react";
+import { formatMoney } from "@/lib/format-money";
 import Link from "next/link";
 
 type OrderListItem = {
@@ -170,7 +171,7 @@ export default async function OrdersPage() {
                         ITEMS: <span className="font-semibold text-black">{getTotalItems(typedOrder)}</span>
                       </p>
                       <p className="uppercase">
-                        TOTAL: <span className="font-bold text-lg">${typedOrder.total.toLocaleString()}</span>
+                        TOTAL: <span className="font-bold text-lg">${formatMoney(typedOrder.total)}</span>
                       </p>
                       {typedOrder.tracking_number && (
                         <p className="uppercase text-gray-600">
