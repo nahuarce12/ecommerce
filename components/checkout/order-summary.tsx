@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cart-store";
 import { calculateShipping } from "@/lib/shipping-calculator";
+import { formatMoney } from "@/lib/format-money";
 import { Truck } from "lucide-react";
 import Image from "next/image";
 
@@ -29,33 +30,42 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
       <CardContent className="space-y-4">
         {/* Items List */}
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
-          {items.map((item) => (
-            <div
-              key={`${item.product.id}-${item.size}-${item.color}`}
-              className="flex gap-3"
-            >
-              <div className="relative w-16 h-16 flex-shrink-0 border border">
-                <Image
-                  src={item.product.images[0]}
-                  alt={item.product.name}
-                  fill
-                  className="object-cover"
-                />
+          {items.map((item) => {
+            const variantDetails = [
+              item.color && item.color !== "DEFAULT" ? item.color : null,
+              item.size && item.size !== "ÚNICO" ? `TALLE: ${item.size}` : null,
+            ].filter(Boolean) as string[];
+
+            return (
+              <div
+                key={`${item.product.id}-${item.size}-${item.color}`}
+                className="flex gap-3"
+              >
+                <div className="relative w-16 h-16 flex-shrink-0 border border">
+                  <Image
+                    src={item.product.images[0]}
+                    alt={item.product.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 text-sm">
+                  <p className="font-medium uppercase truncate">{item.product.name}</p>
+                  {variantDetails.length > 0 && (
+                    <p className="text-xs text-gray-600 uppercase">
+                      {variantDetails.join(" / ")}
+                    </p>
+                  )}
+                  <p className="text-xs">
+                    ${formatMoney(item.product.price)} x {item.quantity}
+                  </p>
+                </div>
+                <div className="text-sm font-medium">
+                  ${formatMoney(item.product.price * item.quantity)}
+                </div>
               </div>
-              <div className="flex-1 min-w-0 text-sm">
-                <p className="font-medium uppercase truncate">{item.product.name}</p>
-                <p className="text-xs text-gray-600 uppercase">
-                  {item.color} / TALLE: {item.size}
-                </p>
-                <p className="text-xs">
-                  ${item.product.price.toLocaleString()} x {item.quantity}
-                </p>
-              </div>
-              <div className="text-sm font-medium">
-                ${(item.product.price * item.quantity).toLocaleString()}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <Separator className="bg-black" />
@@ -63,7 +73,7 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
           <span className="uppercase">SUBTOTAL</span>
-          <span className="font-medium">${subtotal.toLocaleString()}</span>
+          <span className="font-medium">${formatMoney(subtotal)}</span>
         </div>
 
         {/* Shipping */}
@@ -80,7 +90,7 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
                     GRATIS
                   </Badge>
                 ) : (
-                  `$${shipping.cost.toLocaleString()}`
+                  `$${formatMoney(shipping.cost)}`
                 )}
               </span>
             </div>
@@ -100,7 +110,7 @@ export function OrderSummary({ city, province }: OrderSummaryProps) {
         {/* Total */}
         <div className="flex justify-between text-lg font-bold">
           <span className="uppercase">TOTAL</span>
-          <span>${total.toLocaleString()}</span>
+          <span>${formatMoney(total)}</span>
         </div>
 
         {shipping && shipping.isFree && (

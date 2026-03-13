@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, AlertTriangle, ShoppingCart, DollarSign, Shield } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/format-money";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -73,7 +74,7 @@ export default async function AdminDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${revenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatMoney(revenue)}</div>
           </CardContent>
         </Card>
 

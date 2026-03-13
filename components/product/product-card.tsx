@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Product } from "@/types";
 import { useUIStore } from "@/store/ui-store";
+import { formatMoney } from "@/lib/format-money";
 
 interface ProductCardProps {
   product: Product;
@@ -35,7 +36,7 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.name}
         </h3>
         <p className="mt-1 text-xs md:text-sm font-medium text-muted-foreground">
-          ${product.price.toLocaleString("es-AR")}
+          ${formatMoney(product.price)}
         </p>
       </div>
     </div>

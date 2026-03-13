@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProductFormDialog } from "@/components/admin/product-form-dialog";
+import { formatMoney } from "@/lib/format-money";
 
 type ProductWithRelations = Product & {
   categories: { name: string; size_measure_schema?: Category["size_measure_schema"] } | Array<{ name: string; size_measure_schema?: Category["size_measure_schema"] }> | null;
@@ -267,7 +268,7 @@ export default function ProductsPage() {
                   {product.name}
                 </TableCell>
                 <TableCell className="uppercase text-xs">{product.brand}</TableCell>
-                <TableCell className="text-xs">${product.price}</TableCell>
+                <TableCell className="text-xs">${formatMoney(product.price)}</TableCell>
                 <TableCell className="text-xs">
                   {product.product_sizes && product.product_sizes.length > 0 ? (
                     <div className="space-y-0.5">

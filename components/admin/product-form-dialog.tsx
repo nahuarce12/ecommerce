@@ -33,6 +33,19 @@ interface SizeStock {
 
 const normalizeMeasurementKey = (key: string) => key.trim().toLowerCase();
 
+const formatPriceForInput = (price: number | null | undefined): string => {
+  if (typeof price !== "number" || !Number.isFinite(price)) return "";
+
+  if (Number.isInteger(price)) {
+    return price.toLocaleString("es-AR");
+  }
+
+  return price.toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 const parseCategorySchema = (schema: Category["size_measure_schema"]): SizeMeasurementField[] => {
   if (!Array.isArray(schema)) return [];
 
@@ -94,7 +107,7 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
         name: selectedProduct.name || "",
         slug: selectedProduct.slug || "",
         description: selectedProduct.description || "",
-        price: selectedProduct.price?.toString() || "",
+        price: formatPriceForInput(selectedProduct.price),
         brand: selectedProduct.brand || "",
         stock: selectedProduct.stock?.toString() || "",
         category_id: selectedProduct.category_id || "",
@@ -386,12 +399,12 @@ export function ProductFormDialog({ onSuccess, categories }: ProductFormDialogPr
                 Price *
               </label>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 required
-                placeholder="299.99"
+                placeholder="30.000"
                 className={formErrors.price ? "border-red-500" : ""}
               />
               {formErrors.price && <p className="text-xs text-red-600 mt-1">{formErrors.price}</p>}

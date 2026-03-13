@@ -276,24 +276,32 @@ export default function CheckoutPage() {
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="space-y-3">
               <p className="font-semibold uppercase">PROBLEMAS DE STOCK:</p>
-              {stockIssues.map((issue) => (
-                <div key={`${issue.productId}-${issue.size}-${issue.color}`} className="flex items-center justify-between">
-                  <div className="text-sm">
-                    <p className="font-medium">{issue.productName}</p>
-                    <p className="text-xs">
-                      {issue.color} / TALLE: {issue.size} - Solicitado: {issue.requestedQty}, Disponible: {issue.availableStock}
-                    </p>
+              {stockIssues.map((issue) => {
+                const variantDetails = [
+                  issue.color && issue.color !== "DEFAULT" ? issue.color : null,
+                  issue.size && issue.size !== "ÚNICO" ? `TALLE: ${issue.size}` : null,
+                ].filter(Boolean) as string[];
+
+                return (
+                  <div key={`${issue.productId}-${issue.size}-${issue.color}`} className="flex items-center justify-between">
+                    <div className="text-sm">
+                      <p className="font-medium">{issue.productName}</p>
+                      <p className="text-xs">
+                        {variantDetails.length > 0 ? `${variantDetails.join(" / ")} - ` : ""}
+                        Solicitado: {issue.requestedQty}, Disponible: {issue.availableStock}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleFixStock(issue.productId, issue.size, issue.color, issue.availableStock)}
+                      className="uppercase text-xs"
+                    >
+                      {issue.availableStock === 0 ? "ELIMINAR" : "AJUSTAR"}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleFixStock(issue.productId, issue.size, issue.color, issue.availableStock)}
-                    className="uppercase text-xs"
-                  >
-                    {issue.availableStock === 0 ? "ELIMINAR" : "AJUSTAR"}
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </AlertDescription>
           </Alert>
         )}
