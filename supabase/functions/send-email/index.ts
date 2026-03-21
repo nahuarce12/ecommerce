@@ -4,6 +4,13 @@ import { paymentApprovedTemplate } from './templates/payment-approved.ts'
 import { orderShippedTemplate } from './templates/order-shipped.ts'
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
+const RESEND_MAX_RETRIES = 2
+
+type ResendAttemptResult = {
+  ok: boolean
+  status: number
+  data: unknown
+}
 
 interface EmailRequest {
   type: 'welcome' | 'order_confirmation' | 'payment_approved' | 'order_shipped'
@@ -107,6 +114,62 @@ function parseOrderShippedPayload(data: Record<string, unknown>): OrderShippedPa
   }
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function safeReadResponseBody(res: Response): Promise<unknown> {
+  const text = await res.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { raw: text }
+  }
+}
+
+async function sendEmailWithRetry(
+  apiKey: string,
+  from: string,
+  to: string,
+  subject: string,
+  html: string,
+): Promise<ResendAttemptResult> {
+  let lastResult: ResendAttemptResult = { ok: false, status: 500, data: { error: 'Unknown error' } }
+
+  for (let attempt = 0; attempt <= RESEND_MAX_RETRIES; attempt += 1) {
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ from, to: [to], subject, html }),
+    })
+
+    const resData = await safeReadResponseBody(res)
+    lastResult = { ok: res.ok, status: res.status, data: resData }
+
+    if (res.ok) {
+      return lastResult
+    }
+
+    const shouldRetry = res.status >= 500 && attempt < RESEND_MAX_RETRIES
+    if (!shouldRetry) {
+      return lastResult
+    }
+
+    // Small exponential backoff for transient upstream errors.
+    const backoffMs = 300 * (attempt + 1)
+    await delay(backoffMs)
+  }
+
+  return lastResult
+}
+
 Deno.serve(async (req) => {
   try {
     const apiKey = Deno.env.get('RESEND_API_KEY')
@@ -164,29 +227,29 @@ Deno.serve(async (req) => {
         )
     }
 
-    const res = await fetch(RESEND_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ from: fromEmail, to: [to], subject, html }),
-    })
+    const resendResult = await sendEmailWithRetry(apiKey, fromEmail, to, subject, html)
 
-    const resData = await res.json()
-
-    if (!res.ok) {
-      console.error('Resend API error:', resData)
+    if (!resendResult.ok) {
+      console.error('Resend API error:', {
+        type,
+        to,
+        status: resendResult.status,
+        fromEmail,
+        error: resendResult.data,
+      })
       return new Response(
-        JSON.stringify({ success: false, error: resData }),
-        { headers: { 'Content-Type': 'application/json' }, status: res.status },
+        JSON.stringify({ success: false, error: resendResult.data }),
+        { headers: { 'Content-Type': 'application/json' }, status: resendResult.status },
       )
     }
 
-    console.log(`Email sent: type=${type}, to=${to}, id=${resData.id}`)
+    const responseRecord = asRecord(resendResult.data)
+    const emailId = asString(responseRecord.id, '')
+
+    console.log(`Email sent: type=${type}, to=${to}, id=${emailId || 'unknown'}`)
 
     return new Response(
-      JSON.stringify({ success: true, id: resData.id }),
+      JSON.stringify({ success: true, id: emailId || null }),
       { headers: { 'Content-Type': 'application/json' }, status: 200 },
     )
   } catch (err) {

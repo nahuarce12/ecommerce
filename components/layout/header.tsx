@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Menu, ShoppingBag, User as UserIcon, X } from "lucide-react";
 
-type Filter = "NEW" | "CLOTHES" | "ACCESSORIES" | "ORDERS";
+type Filter = "NEW" | "CLOTHES" | "ACCESSORIES";
 
 export function Header() {
   const pathname = usePathname();
@@ -19,13 +19,11 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const itemCount = useCartStore((state) => state.getItemCount());
-  const isOrdersPage = pathname === "/orders";
-  const filters: Filter[] = ["NEW", "CLOTHES", "ACCESSORIES", "ORDERS"];
+  const filters: Filter[] = ["NEW", "CLOTHES", "ACCESSORIES"];
   const filterLabels: Record<Filter, string> = {
     NEW: "NUEVO",
     CLOTHES: "ROPA",
     ACCESSORIES: "ACCES.",
-    ORDERS: "ENCARGOS",
   };
 
   useEffect(() => {
@@ -51,14 +49,10 @@ export function Header() {
   const handleFilterClick = (filter: Filter) => {
     setIsMobileFiltersOpen(false);
 
-    if (filter === "ORDERS") {
-      router.push("/orders");
-    } else {
-      // Redirect to home and set filter
-      setSelectedFilter(filter);
-      if (pathname !== "/") {
-        router.push("/");
-      }
+    // Redirect to home and set filter
+    setSelectedFilter(filter);
+    if (pathname !== "/") {
+      router.push("/");
     }
   };
 
@@ -73,7 +67,7 @@ export function Header() {
         {/* Navigation Filters */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium overflow-x-auto">
           {filters.map((filter) => {
-            const isActive = filter === "ORDERS" ? isOrdersPage : selectedFilter === filter && !isOrdersPage;
+            const isActive = selectedFilter === filter && pathname === "/";
             return (
               <button
                 key={filter}
@@ -119,7 +113,7 @@ export function Header() {
         <div id="mobile-header-filters" className="border-t border-border px-4 pb-3 pt-2 md:hidden">
           <nav className="flex items-center gap-4 text-xs font-medium overflow-x-auto">
             {filters.map((filter) => {
-              const isActive = filter === "ORDERS" ? isOrdersPage : selectedFilter === filter && !isOrdersPage;
+              const isActive = selectedFilter === filter && pathname === "/";
               return (
                 <button
                   key={filter}
