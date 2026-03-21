@@ -237,6 +237,26 @@ export async function POST(request: NextRequest) {
       console.error("Error updating order with preference_id:", updateError);
     }
 
+    const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
+    const tokenMode = accessToken.startsWith("TEST-") ? "TEST" : "PROD";
+
+    if (useSandboxInitPoint && tokenMode === "PROD") {
+      return NextResponse.json(
+        {
+          error:
+            "CONFIGURACION INVALIDA: MP_USE_SANDBOX_INIT_POINT=true requiere credenciales TEST-. Desactiva MP_USE_SANDBOX_INIT_POINT o usa token TEST.",
+          debug: {
+            tokenMode,
+            useSandboxInitPoint,
+            appUrl,
+            initPointHost: getHostname(response.init_point),
+            sandboxInitPointHost: getHostname(response.sandbox_init_point),
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const initPoint = resolveCheckoutUrl(response);
 
     if (!initPoint) {
@@ -245,9 +265,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
-    const tokenMode = accessToken.startsWith("TEST-") ? "TEST" : "PROD";
 
     return NextResponse.json({
       success: true,
