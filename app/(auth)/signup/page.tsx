@@ -11,6 +11,7 @@ import { validateSignupInput } from "@/lib/validators";
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,16 +26,25 @@ export default function SignupPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("LAS CONTRASEÑAS NO COINCIDEN");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     const payload = validation.data;
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("welcome", "1");
+    callbackUrl.searchParams.set("next", "/login?confirmed=true");
 
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: payload.email,
       password: payload.password,
       options: {
+        emailRedirectTo: callbackUrl.toString(),
         data: {
           full_name: payload.fullName,
         },
@@ -45,11 +55,6 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      fetch("/api/auth/welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: payload.email, fullName: payload.fullName }),
-      }).catch(() => {});
       router.push("/login?registered=true");
     }
   };
@@ -144,6 +149,22 @@ export default function SignupPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full"
+                placeholder="••••••••"
+                minLength={8}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="text-xs uppercase font-medium block mb-2">
+                Repetir contraseña
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="w-full"
                 placeholder="••••••••"
