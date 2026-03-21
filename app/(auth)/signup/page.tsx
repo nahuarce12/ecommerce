@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { validateSignupInput } from "@/lib/validators";
 
+const EXISTING_EMAIL_ERROR = "YA EXISTE UNA CUENTA REGISTRADA CON ESTE EMAIL";
+
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +41,33 @@ export default function SignupPage() {
     callbackUrl.searchParams.set("welcome", "1");
     callbackUrl.searchParams.set("next", "/login?confirmed=true");
 
+    try {
+      const checkResponse = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: payload.email }),
+      });
+
+      if (!checkResponse.ok) {
+        setError("NO SE PUDO VALIDAR EL EMAIL. INTENTÁ NUEVAMENTE.");
+        setLoading(false);
+        return;
+      }
+
+      const checkData = (await checkResponse.json()) as { exists?: boolean };
+      if (checkData.exists) {
+        setError(EXISTING_EMAIL_ERROR);
+        setLoading(false);
+        return;
+      }
+    } catch {
+      setError("NO SE PUDO VALIDAR EL EMAIL. INTENTÁ NUEVAMENTE.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: payload.email,
@@ -52,7 +81,12 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
+      const signUpError = error.message.toLowerCase();
+      if (signUpError.includes("already registered") || signUpError.includes("already exists")) {
+        setError(EXISTING_EMAIL_ERROR);
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
     } else {
       router.push("/login?registered=true");

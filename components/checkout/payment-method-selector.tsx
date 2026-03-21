@@ -5,10 +5,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { getEnabledPaymentMethods, BANK_INFO, WHATSAPP_NUMBER } from "@/lib/payment-methods";
-import { Building2, Wallet, CreditCard, MessageCircle, Copy, CheckCircle } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { getEnabledPaymentMethods, WHATSAPP_NUMBER } from "@/lib/payment-methods";
+import { Building2, Wallet, CreditCard } from "lucide-react";
+import { SecureBankTransferDetails } from "@/components/checkout/secure-bank-transfer-details";
 
 interface PaymentMethodSelectorProps {
   selectedMethod: string;
@@ -17,7 +16,6 @@ interface PaymentMethodSelectorProps {
 
 export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: PaymentMethodSelectorProps) {
   const paymentMethods = getEnabledPaymentMethods();
-  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const getIcon = (id: string) => {
     switch (id) {
@@ -29,17 +27,6 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
         return <CreditCard className="h-5 w-5" />;
       default:
         return null;
-    }
-  };
-
-  const copyToClipboard = async (text: string, field: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedField(field);
-      toast.success(`${field.toUpperCase()} COPIADO`);
-      setTimeout(() => setCopiedField(null), 2000);
-    } catch {
-      toast.error("ERROR AL COPIAR");
     }
   };
 
@@ -74,64 +61,7 @@ export function PaymentMethodSelector({ selectedMethod, onSelectMethod }: Paymen
 
                 {/* Bank Transfer Details */}
                 {selectedMethod === "bank_transfer" && method.id === "bank_transfer" && (
-                  <Alert className="mt-3 border">
-                    <Building2 className="h-4 w-4" />
-                    <AlertDescription>
-                      <p className="font-semibold uppercase mb-3 text-sm">DATOS BANCARIOS</p>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-gray-200 gap-1">
-                          <span className="text-gray-600 uppercase">CBU</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold text-[10px] sm:text-xs break-all">{BANK_INFO.cbu}</span>
-                            <button
-                              onClick={() => copyToClipboard(BANK_INFO.cbu, "CBU")}
-                              className="p-1 hover:bg-gray-100 rounded"
-                            >
-                              {copiedField === "CBU" ? (
-                                <CheckCircle className="h-3 w-3 text-green-600" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-gray-200 gap-1">
-                          <span className="text-gray-600 uppercase">ALIAS</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold break-all">{BANK_INFO.alias}</span>
-                            <button
-                              onClick={() => copyToClipboard(BANK_INFO.alias, "ALIAS")}
-                              className="p-1 hover:bg-gray-100 rounded"
-                            >
-                              {copiedField === "ALIAS" ? (
-                                <CheckCircle className="h-3 w-3 text-green-600" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center py-1 border-b border-gray-200">
-                          <span className="text-gray-600 uppercase">TITULAR</span>
-                          <span className="font-semibold uppercase">{BANK_INFO.holder}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center py-1">
-                          <span className="text-gray-600 uppercase">BANCO</span>
-                          <span className="font-semibold uppercase">{BANK_INFO.bank}</span>
-                        </div>
-                      </div>
-
-                      <Alert className="mt-4 border-green-600 bg-green-50">
-                        <MessageCircle className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-xs uppercase">
-                          ENVÍA EL COMPROBANTE POR WHATSAPP AL <span className="font-semibold">{WHATSAPP_NUMBER}</span> CON TU NÚMERO DE PEDIDO
-                        </AlertDescription>
-                      </Alert>
-                    </AlertDescription>
-                  </Alert>
+                  <SecureBankTransferDetails mode="checkout" />
                 )}
 
                 {/* Cash Details */}

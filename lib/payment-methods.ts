@@ -37,23 +37,28 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   },
 ];
 
+function readConfigValue(value: string | undefined, fallback: string): string {
+  const normalized = value?.trim();
+  return normalized && normalized.length > 0 ? normalized : fallback;
+}
+
 /**
  * Bank account information for transfers
  * TODO: Replace with actual bank account details
  */
 export const BANK_INFO = {
-  cbu: '3840200500000000306764',
-  alias: 'supplyworld',
-  holder: 'Nahuel Lautaro Arce',
-  bank: 'Uala Bank S.A.U',
-  accountType: 'Cuenta Corriente',
+  cbu: readConfigValue(process.env.BANK_TRANSFER_CBU, '3840200500000000306764'),
+  alias: readConfigValue(process.env.BANK_TRANSFER_ALIAS, 'supplyworld'),
+  holder: readConfigValue(process.env.BANK_TRANSFER_HOLDER, 'Nahuel Lautaro Arce'),
+  bank: readConfigValue(process.env.BANK_TRANSFER_BANK, 'Uala Bank S.A.U'),
+  accountType: readConfigValue(process.env.BANK_TRANSFER_ACCOUNT_TYPE, 'Cuenta Corriente'),
 } as const;
 
 /**
  * WhatsApp contact information
  * TODO: Replace with actual WhatsApp number
  */
-export const WHATSAPP_NUMBER = '+543412101416';
+export const WHATSAPP_NUMBER = readConfigValue(process.env.WHATSAPP_SUPPORT_NUMBER, '+543412101416');
 
 /**
  * Generate WhatsApp link with pre-filled message
