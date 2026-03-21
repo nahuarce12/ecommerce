@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
       const email = await getUserEmail(order.user_id);
       if (email) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-        sendNotificationEmail("payment_approved", email, {
+        await sendNotificationEmail("payment_approved", email, {
           orderId: order.id,
           total: order.total,
           paymentMethod: order.payment_method,

@@ -10,12 +10,12 @@ export const SHIPPING_ZONES = {
     description: 'ENVÍO GRATIS',
   },
   SANTA_FE: {
-    cost: 1500,
+    cost: 3000,
     zone: 'santa_fe',
     description: 'PROVINCIA SANTA FE',
   },
   NACIONAL: {
-    cost: 3000,
+    cost: 5000,
     zone: 'nacional',
     description: 'RESTO DEL PAÍS',
   },
