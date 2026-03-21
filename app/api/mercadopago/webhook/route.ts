@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as WebhookPayload;
     console.log("MercadoPago webhook received:", body);
 
-    // Mercado Pago dashboard "Test notification" uses a synthetic payload/id.
-    // Acknowledge it before signature checks to let URL validation pass.
+    // Mercado Pago "Test notification" from dashboard uses a synthetic payment id.
+    // We acknowledge it early to avoid failing the URL check with a 500.
     if (
       body.live_mode === false &&
       String(body.data?.id ?? body.resource ?? "") === "123456"
