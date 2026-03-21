@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { checkRateLimit, getRequestIp } from "@/lib/rate-limit";
+import { validateMercadoPagoRuntimeConfig } from "@/lib/mercadopago-runtime";
 
 type PreferenceOrderItem = {
   id: string;
@@ -17,6 +18,12 @@ type PreferenceOrder = {
   id: string;
   shipping_cost: number;
   order_items: PreferenceOrderItem[];
+};
+
+type PayerData = {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
 };
 
 function shouldExcludeAccountMoney(accessToken: string): boolean {
@@ -65,6 +72,24 @@ function getAppUrl(request: NextRequest): string {
   return normalizeAppUrl(new URL(request.url).origin);
 }
 
+function buildNotificationUrl(appUrl: string): string {
+  const configuredUrl = process.env.MP_NOTIFICATION_URL?.trim();
+  const baseUrl = configuredUrl || `${appUrl}/api/mercadopago/webhook`;
+
+  let notificationUrl: URL;
+  try {
+    notificationUrl = new URL(baseUrl);
+  } catch {
+    throw new Error("MP_NOTIFICATION_URL tiene un formato inválido");
+  }
+
+  if (!notificationUrl.searchParams.has("source_news")) {
+    notificationUrl.searchParams.set("source_news", "webhooks");
+  }
+
+  return notificationUrl.toString();
+}
+
 function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init_point?: string | null }): string | null {
   const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
 
@@ -82,6 +107,66 @@ function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init
   return response.init_point || response.sandbox_init_point || null;
 }
 
+function resolveMercadoPagoTimeout(): number {
+  const raw = process.env.MP_API_TIMEOUT_MS?.trim();
+  const parsed = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(parsed) || parsed < 1000) {
+    return 10000;
+  }
+
+  return Math.floor(parsed);
+}
+
+function buildPayerData(params: {
+  email: string | undefined;
+  fullName: string | null | undefined;
+}): PayerData | undefined {
+  const payer: PayerData = {};
+
+  if (params.email) {
+    payer.email = params.email;
+  }
+
+  const normalizedName = params.fullName?.trim();
+  if (normalizedName) {
+    const [firstName, ...lastNameParts] = normalizedName.split(/\s+/);
+    if (firstName) {
+      payer.first_name = firstName;
+    }
+    if (lastNameParts.length > 0) {
+      payer.last_name = lastNameParts.join(" ");
+    }
+  }
+
+  return Object.keys(payer).length > 0 ? payer : undefined;
+}
+
+function buildPreferenceExpiration():
+  | {
+      expires: true;
+      expiration_date_from: string;
+      expiration_date_to: string;
+    }
+  | undefined {
+  const rawHours = process.env.MP_PREFERENCE_EXPIRATION_HOURS?.trim();
+  if (!rawHours) return undefined;
+
+  const hours = Number(rawHours);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return undefined;
+  }
+
+  const now = new Date();
+  const to = new Date(now.getTime() + Math.floor(hours * 60 * 60 * 1000));
+
+  return {
+    expires: true,
+    expiration_date_from: now.toISOString(),
+    expiration_date_to: to.toISOString(),
+  };
+}
+
 function getHostname(url: string | null | undefined): string | null {
   if (!url) return null;
 
@@ -92,18 +177,36 @@ function getHostname(url: string | null | undefined): string | null {
   }
 }
 
+function isProduction(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+function getCorrelationId(request: NextRequest): string {
+  return (
+    request.headers.get("x-request-id")?.trim() ||
+    request.headers.get("x-correlation-id")?.trim() ||
+    crypto.randomUUID()
+  );
+}
+
 export async function POST(request: NextRequest) {
+  const correlationId = getCorrelationId(request);
+
   try {
     const supabase = await createClient();
     const ip = getRequestIp(request.headers);
     const accessToken = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
+    const runtimeValidation = validateMercadoPagoRuntimeConfig({
+      accessToken,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      useSandboxInitPoint,
+    });
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "MP_ACCESS_TOKEN NO CONFIGURADO" },
-        { status: 500 }
-      );
+    if (!runtimeValidation.valid) {
+      return NextResponse.json({ error: runtimeValidation.error, requestId: correlationId }, { status: 500 });
     }
+    const resolvedAccessToken = accessToken as string;
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -150,11 +253,22 @@ export async function POST(request: NextRequest) {
 
     const typedOrder = order as PreferenceOrder;
 
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const payer = buildPayerData({
+      email: user.email,
+      fullName: profileData?.full_name,
+    });
+
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
-      accessToken,
+      accessToken: resolvedAccessToken,
       options: {
-        timeout: 5000,
+        timeout: resolveMercadoPagoTimeout(),
       }
     });
 
@@ -183,23 +297,31 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = getAppUrl(request);
-    const excludeAccountMoney = shouldExcludeAccountMoney(accessToken);
+    const excludeAccountMoney = shouldExcludeAccountMoney(resolvedAccessToken);
+    const notificationUrl = buildNotificationUrl(appUrl);
+    const preferenceExpiration = buildPreferenceExpiration();
 
-    console.log("Using app URL:", appUrl);
-    console.log("Creating preference for order:", orderId);
+    console.log("Creating MercadoPago preference", {
+      correlationId,
+      orderId,
+      userId: user.id,
+      appUrl,
+    });
 
     // Create preference - NO enviar payer info para evitar pre-autenticación en sandbox
     const preferenceData = {
       items,
+      ...(payer ? { payer } : {}),
       back_urls: {
         success: `${appUrl}/checkout/success/${orderId}?status=approved`,
         failure: `${appUrl}/checkout/success/${orderId}?status=failure`,
         pending: `${appUrl}/checkout/success/${orderId}?status=pending`,
       },
       auto_return: "approved" as const,
-      notification_url: `${appUrl}/api/mercadopago/webhook`,
+      notification_url: notificationUrl,
       external_reference: orderId,
       statement_descriptor: "SUPPLY STORE",
+      ...(preferenceExpiration ?? {}),
       ...(excludeAccountMoney
         ? {
             payment_methods: {
@@ -208,8 +330,6 @@ export async function POST(request: NextRequest) {
           }
         : {}),
     };
-
-    console.log("Preference data:", JSON.stringify(preferenceData, null, 2));
 
     let response;
     try {
@@ -227,7 +347,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("Preference response:", {
+    console.log("MercadoPago preference created", {
+      correlationId,
+      orderId,
       id: response.id,
       init_point: response.init_point,
       sandbox_init_point: response.sandbox_init_point,
@@ -246,6 +368,27 @@ export async function POST(request: NextRequest) {
       console.error("Error updating order with preference_id:", updateError);
     }
 
+    const tokenMode = resolvedAccessToken.startsWith("TEST-") ? "TEST" : "PROD";
+    const debugInfo = {
+      tokenMode,
+      useSandboxInitPoint,
+      appUrl,
+      initPointHost: getHostname(response.init_point),
+      sandboxInitPointHost: getHostname(response.sandbox_init_point),
+    };
+
+    if (useSandboxInitPoint && tokenMode === "PROD") {
+      return NextResponse.json(
+        {
+          error:
+            "CONFIGURACION INVALIDA: MP_USE_SANDBOX_INIT_POINT=true requiere credenciales TEST-. Desactiva MP_USE_SANDBOX_INIT_POINT o usa token TEST.",
+          requestId: correlationId,
+          debug: isProduction() ? undefined : debugInfo,
+        },
+        { status: 400 }
+      );
+    }
+
     const initPoint = resolveCheckoutUrl(response);
 
     if (!initPoint) {
@@ -254,27 +397,27 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    console.log("Redirecting to:", initPoint);
-
-    const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
-    const tokenMode = accessToken.startsWith("TEST-") ? "TEST" : "PROD";
+    console.log("Returning checkout URL", {
+      correlationId,
+      orderId,
+      selectedCheckoutHost: getHostname(initPoint),
+    });
 
     return NextResponse.json({
       success: true,
+      requestId: correlationId,
       preferenceId: response.id,
       initPoint,
-      debug: {
-        tokenMode,
-        useSandboxInitPoint,
-        appUrl,
+      debug: isProduction()
+        ? undefined
+        : {
+        ...debugInfo,
         selectedCheckoutHost: getHostname(initPoint),
-        initPointHost: getHostname(response.init_point),
-        sandboxInitPointHost: getHostname(response.sandbox_init_point),
       },
     });
 
   } catch (error) {
-    console.error("Error creating MercadoPago preference:", error);
+    console.error("Error creating MercadoPago preference", { correlationId, error });
     
     // Extract detailed error information
     let errorMessage = "ERROR INTERNO DEL SERVIDOR";
@@ -287,12 +430,16 @@ export async function POST(request: NextRequest) {
       if ('error' in error) errorDetails = { ...errorDetails, error: error.error };
     }
     
-    console.error("Detailed error:", errorDetails);
+    console.error("Detailed MercadoPago preference error", { correlationId, errorDetails });
     
     return NextResponse.json(
       { 
+        requestId: correlationId,
         error: errorMessage,
-        details: Object.keys(errorDetails).length > 0 ? errorDetails : undefined 
+        details:
+          !isProduction() && Object.keys(errorDetails).length > 0
+            ? errorDetails
+            : undefined,
       },
       { status: 500 }
     );

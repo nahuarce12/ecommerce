@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { sendNotificationEmail, getUserEmail } from "@/lib/email";
 import { verifyMercadoPagoWebhookSecurity } from "@/lib/webhook-security";
+import { validateMercadoPagoRuntimeConfig } from "@/lib/mercadopago-runtime";
 
 type WebhookPayload = {
   action?: string;
@@ -13,20 +14,95 @@ type WebhookPayload = {
   live_mode?: boolean;
 };
 
+function resolveMercadoPagoTimeout(): number {
+  const raw = process.env.MP_API_TIMEOUT_MS?.trim();
+  const parsed = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(parsed) || parsed < 1000) {
+    return 10000;
+  }
+
+  return Math.floor(parsed);
+}
+
+function resolveWebhookFetchAttempts(): number {
+  const raw = process.env.MP_WEBHOOK_FETCH_ATTEMPTS?.trim();
+  const parsed = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 2;
+  }
+
+  return Math.min(Math.floor(parsed), 4);
+}
+
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getPaymentWithRetry(params: {
+  paymentClient: Payment;
+  paymentId: string | number;
+}) {
+  const attempts = resolveWebhookFetchAttempts();
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await params.paymentClient.get({ id: params.paymentId });
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) {
+        break;
+      }
+
+      // Exponential backoff corto para errores transitorios de red/API.
+      const backoffMs = 250 * Math.pow(2, attempt - 1);
+      await delay(backoffMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function getCorrelationId(request: NextRequest): string {
+  return (
+    request.headers.get("x-request-id")?.trim() ||
+    request.headers.get("x-correlation-id")?.trim() ||
+    crypto.randomUUID()
+  );
+}
+
 export async function POST(request: NextRequest) {
+  const correlationId = getCorrelationId(request);
+
   try {
     const accessToken = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
-    if (!accessToken) {
-      return NextResponse.json({ error: "MP_ACCESS_TOKEN NO CONFIGURADO" }, { status: 500 });
-    }
-
     const webhookSecret =
       process.env.MP_WEBHOOK_SECRET?.trim() ||
       process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();
+    const runtimeValidation = validateMercadoPagoRuntimeConfig({
+      accessToken,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      webhookSecret,
+      requireWebhookSecretInProduction: true,
+    });
+
+    if (!runtimeValidation.valid) {
+      return NextResponse.json({ error: runtimeValidation.error, requestId: correlationId }, { status: 500 });
+    }
+    const resolvedAccessToken = accessToken as string;
 
     // Get notification data from MercadoPago
     const body = (await request.json()) as WebhookPayload;
-    console.log("MercadoPago webhook received:", body);
+    console.log("MercadoPago webhook received", {
+      correlationId,
+      type: body.type,
+      topic: body.topic,
+      action: body.action,
+      dataId: body.data?.id ?? body.resource,
+      liveMode: body.live_mode,
+    });
 
     // Mercado Pago "Test notification" from dashboard uses a synthetic payment id.
     // We acknowledge it early to avoid failing the URL check with a 500.
@@ -34,7 +110,7 @@ export async function POST(request: NextRequest) {
       body.live_mode === false &&
       String(body.data?.id ?? body.resource ?? "") === "123456"
     ) {
-      return NextResponse.json({ success: true, simulated: true }, { status: 200 });
+      return NextResponse.json({ success: true, simulated: true, requestId: correlationId }, { status: 200 });
     }
 
     if (webhookSecret) {
@@ -46,12 +122,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (!securityCheck.valid) {
-        console.error("MercadoPago webhook rejected:", securityCheck.reason);
-        return NextResponse.json({ error: "INVALID SIGNATURE" }, { status: 401 });
+        console.error("MercadoPago webhook rejected", { correlationId, reason: securityCheck.reason });
+        return NextResponse.json({ error: "INVALID SIGNATURE", requestId: correlationId }, { status: 401 });
       }
-    } else if (process.env.NODE_ENV === "production") {
-      console.error("MercadoPago webhook rejected: MP_WEBHOOK_SECRET (o MERCADOPAGO_WEBHOOK_SECRET) missing in production");
-      return NextResponse.json({ error: "WEBHOOK SECRET NOT CONFIGURED" }, { status: 500 });
     }
 
     // MercadoPago sends notifications in different formats
@@ -63,8 +136,8 @@ export async function POST(request: NextRequest) {
     
     // We only process payment notifications
     if (notificationType !== "payment") {
-      console.log("Ignoring non-payment notification:", notificationType);
-      return NextResponse.json({ success: true }, { status: 200 });
+      console.log("Ignoring non-payment notification", { correlationId, notificationType });
+      return NextResponse.json({ success: true, requestId: correlationId }, { status: 200 });
     }
 
     // Get payment ID from either format
@@ -72,26 +145,34 @@ export async function POST(request: NextRequest) {
     
     if (!paymentId) {
       console.error("No payment ID in webhook data");
-      return NextResponse.json({ error: "No payment ID" }, { status: 400 });
+      return NextResponse.json({ error: "No payment ID", requestId: correlationId }, { status: 400 });
     }
 
     // Initialize MercadoPago client
     const client = new MercadoPagoConfig({
-      accessToken,
+      accessToken: resolvedAccessToken,
       options: {
-        timeout: 5000,
+          timeout: resolveMercadoPagoTimeout(),
       }
     });
 
     const payment = new Payment(client);
 
     // Get payment details from MercadoPago API
-    const paymentData = await payment.get({ id: paymentId });
-    console.log("Payment data from MercadoPago:", paymentData);
+    const paymentData = await getPaymentWithRetry({
+      paymentClient: payment,
+      paymentId,
+    });
+    console.log("Payment data from MercadoPago", {
+      correlationId,
+      paymentId: paymentData.id,
+      paymentStatus: paymentData.status,
+      externalReference: paymentData.external_reference,
+    });
 
     if (!paymentData.external_reference) {
       console.error("No external_reference (order_id) in payment");
-      return NextResponse.json({ error: "No order reference" }, { status: 400 });
+      return NextResponse.json({ error: "No order reference", requestId: correlationId }, { status: 400 });
     }
 
     const orderId = paymentData.external_reference;
@@ -111,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     if (orderError || !order) {
       console.error("Order not found:", orderId, orderError);
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json({ error: "Order not found", requestId: correlationId }, { status: 404 });
     }
 
     // Update order based on payment status
@@ -144,12 +225,12 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error("Error updating order:", updateError);
-        return NextResponse.json({ error: "Error updating order" }, { status: 500 });
+        return NextResponse.json({ error: "Error updating order", requestId: correlationId }, { status: 500 });
       }
 
       if (!updatedOrder) {
         console.log("Payment notification already processed, skipping stock decrement:", orderId);
-        return NextResponse.json({ success: true, duplicate: true }, { status: 200 });
+        return NextResponse.json({ success: true, duplicate: true, requestId: correlationId }, { status: 200 });
       }
 
       // Decrement stock for each item (only if not already decremented)
@@ -194,7 +275,7 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error("Error updating order:", updateError);
-        return NextResponse.json({ error: "Error updating order" }, { status: 500 });
+        return NextResponse.json({ error: "Error updating order", requestId: correlationId }, { status: 500 });
       }
 
     } else if (paymentStatus === "in_process" || paymentStatus === "pending") {
@@ -208,17 +289,17 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error("Error updating order:", updateError);
-        return NextResponse.json({ error: "Error updating order" }, { status: 500 });
+        return NextResponse.json({ error: "Error updating order", requestId: correlationId }, { status: 500 });
       }
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, requestId: correlationId }, { status: 200 });
 
   } catch (error) {
-    console.error("Error processing MercadoPago webhook:", error);
+    console.error("Error processing MercadoPago webhook", { correlationId, error });
     const errorMessage = error instanceof Error ? error.message : "ERROR INTERNO DEL SERVIDOR";
     return NextResponse.json(
-      { error: errorMessage },
+      { error: errorMessage, requestId: correlationId },
       { status: 500 }
     );
   }
