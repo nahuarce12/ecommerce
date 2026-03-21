@@ -5,10 +5,12 @@ import { sendNotificationEmail, getUserEmail } from "@/lib/email";
 import { verifyMercadoPagoWebhookSecurity } from "@/lib/webhook-security";
 
 type WebhookPayload = {
+  action?: string;
   type?: string;
   topic?: string;
   data?: { id?: string | number };
   resource?: string | number;
+  live_mode?: boolean;
 };
 
 export async function POST(request: NextRequest) {
@@ -25,6 +27,15 @@ export async function POST(request: NextRequest) {
     // Get notification data from MercadoPago
     const body = (await request.json()) as WebhookPayload;
     console.log("MercadoPago webhook received:", body);
+
+    // Mercado Pago dashboard "Test notification" uses a synthetic payload/id.
+    // Acknowledge it before signature checks to let URL validation pass.
+    if (
+      body.live_mode === false &&
+      String(body.data?.id ?? body.resource ?? "") === "123456"
+    ) {
+      return NextResponse.json({ success: true, simulated: true }, { status: 200 });
+    }
 
     if (webhookSecret) {
       const securityCheck = verifyMercadoPagoWebhookSecurity({
