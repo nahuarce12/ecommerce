@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const orderItems = orderItemsResult.data || [];
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-    sendNotificationEmail("order_confirmation", user.email!, {
+    await sendNotificationEmail("order_confirmation", user.email!, {
       orderId,
       items: orderItems,
       total,

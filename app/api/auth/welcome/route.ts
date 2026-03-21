@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
 
-    sendNotificationEmail("welcome", email, {
+    await sendNotificationEmail("welcome", email, {
       fullName: fullName || "Usuario",
       appUrl,
     });

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       const email = await getUserEmail(order.user_id);
       if (email) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-        sendNotificationEmail("order_shipped", email, {
+        await sendNotificationEmail("order_shipped", email, {
           orderId: order.id,
           trackingNumber: order.tracking_number,
           appUrl,
