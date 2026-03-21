@@ -38,6 +38,15 @@ function sanitizePhone(value: string): string {
   return value.replace(/[^0-9]/g, "");
 }
 
+function buildFallbackWhatsappLink(phone: string, orderReference?: string): string {
+  const normalizedPhone = sanitizePhone(phone);
+  const message = orderReference
+    ? `Hola, realice la transferencia de la orden #${orderReference}. Adjunto comprobante.`
+    : "Hola, realice la transferencia. Adjunto comprobante.";
+
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+}
+
 export function SecureBankTransferDetails({ mode, whatsappLink, orderReference }: SecureBankTransferDetailsProps) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,8 +88,8 @@ export function SecureBankTransferDetails({ mode, whatsappLink, orderReference }
       return undefined;
     }
 
-    return `https://wa.me/${sanitizePhone(whatsappNumber)}`;
-  }, [whatsappLink, whatsappNumber]);
+    return buildFallbackWhatsappLink(whatsappNumber, orderReference);
+  }, [whatsappLink, whatsappNumber, orderReference]);
 
   const hideDetails = () => {
     setBankInfo(null);
