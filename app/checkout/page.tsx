@@ -36,6 +36,7 @@ export default function CheckoutPage() {
   const [shippingProvince, setShippingProvince] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [hasInvalidItems, setHasInvalidItems] = useState(false);
+  const [mpDebugPayload, setMpDebugPayload] = useState<string | null>(null);
 
   // Check for invalid items (without color or size)
   useEffect(() => {
@@ -171,6 +172,24 @@ export default function CheckoutPage() {
           throw new Error(preferenceResult.error || "Error al crear la preferencia de pago");
         }
 
+        if (preferenceResult?.debug) {
+          console.log("MercadoPago preference debug:", preferenceResult.debug);
+          const serializedDebug = JSON.stringify(preferenceResult.debug, null, 2);
+
+          try {
+            localStorage.setItem("mp_last_preference_debug", serializedDebug);
+          } catch (storageError) {
+            console.warn("Could not persist MercadoPago debug in localStorage:", storageError);
+          }
+
+          const isDebugMode = new URLSearchParams(window.location.search).get("mpdebug") === "1";
+          if (isDebugMode) {
+            setSubmitting(false);
+            setMpDebugPayload(serializedDebug);
+            return;
+          }
+        }
+
         // Redirect to MercadoPago checkout
         window.location.href = preferenceResult.initPoint;
         
@@ -240,6 +259,17 @@ export default function CheckoutPage() {
             </Button>
           </Link>
         </div>
+
+        {mpDebugPayload && (
+          <Alert className="mb-6 border-black">
+            <AlertDescription>
+              <p className="font-semibold uppercase mb-2">MERCADOPAGO DEBUG</p>
+              <pre className="text-xs whitespace-pre-wrap break-all bg-gray-100 p-3 rounded-md overflow-auto max-h-80">
+                {mpDebugPayload}
+              </pre>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {hasInvalidItems && (
           <Alert variant="destructive" className="mb-6 border-red-600">
