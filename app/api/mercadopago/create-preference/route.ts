@@ -39,17 +39,30 @@ function isAccountMoneyExclusionError(error: unknown): boolean {
   );
 }
 
+function normalizeAppUrl(rawUrl: string): string {
+  const trimmedUrl = rawUrl.trim();
+  const urlWithProtocol = /^https?:\/\//i.test(trimmedUrl)
+    ? trimmedUrl
+    : `https://${trimmedUrl}`;
+
+  return new URL(urlWithProtocol).origin;
+}
+
 function getAppUrl(request: NextRequest): string {
   const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (configuredAppUrl) {
-    return configuredAppUrl;
+    try {
+      return normalizeAppUrl(configuredAppUrl);
+    } catch {
+      throw new Error("NEXT_PUBLIC_APP_URL tiene un formato inválido");
+    }
   }
 
   if (process.env.NODE_ENV === "production") {
     throw new Error("NEXT_PUBLIC_APP_URL es obligatorio en producción");
   }
 
-  return new URL(request.url).origin;
+  return normalizeAppUrl(new URL(request.url).origin);
 }
 
 function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init_point?: string | null }): string | null {
@@ -67,6 +80,16 @@ function resolveCheckoutUrl(response: { init_point?: string | null; sandbox_init
   }
 
   return response.init_point || response.sandbox_init_point || null;
+}
+
+function getHostname(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -233,10 +256,21 @@ export async function POST(request: NextRequest) {
     }
     console.log("Redirecting to:", initPoint);
 
+    const useSandboxInitPoint = process.env.MP_USE_SANDBOX_INIT_POINT?.trim().toLowerCase() === "true";
+    const tokenMode = accessToken.startsWith("TEST-") ? "TEST" : "PROD";
+
     return NextResponse.json({
       success: true,
       preferenceId: response.id,
       initPoint,
+      debug: {
+        tokenMode,
+        useSandboxInitPoint,
+        appUrl,
+        selectedCheckoutHost: getHostname(initPoint),
+        initPointHost: getHostname(response.init_point),
+        sandboxInitPointHost: getHostname(response.sandbox_init_point),
+      },
     });
 
   } catch (error) {
