@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Package, Truck, MessageCircle, ArrowLeft, Eye, CreditCard } from "lucide-react";
-import { BANK_INFO, WHATSAPP_NUMBER, generateWhatsAppLink } from "@/lib/payment-methods";
+import { WHATSAPP_NUMBER, generateWhatsAppLink } from "@/lib/payment-methods";
 import { formatMoney } from "@/lib/format-money";
 import { RetryPaymentButton } from "@/components/checkout/retry-payment-button";
+import { SecureBankTransferDetails } from "@/components/checkout/secure-bank-transfer-details";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -371,52 +372,13 @@ export default async function OrderSuccessPage({ params, searchParams }: PagePro
         )}
 
         {isBankTransfer && (
-          <Card className="mb-6 border-2 border">
-            <CardHeader>
-              <CardTitle className="uppercase">INSTRUCCIONES DE PAGO</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert className="border">
-                <AlertDescription>
-                  <p className="font-semibold uppercase mb-3 text-sm">TRANSFERENCIA BANCARIA</p>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-200 gap-1">
-                      <span className="text-gray-600 uppercase">CBU</span>
-                      <span className="font-mono font-semibold text-[10px] sm:text-xs break-all">{BANK_INFO.cbu}</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-200 gap-1">
-                      <span className="text-gray-600 uppercase">ALIAS</span>
-                      <span className="font-mono font-semibold break-all">{BANK_INFO.alias}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <span className="text-gray-600 uppercase">TITULAR</span>
-                      <span className="font-semibold uppercase">{BANK_INFO.holder}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600 uppercase">BANCO</span>
-                      <span className="font-semibold uppercase">{BANK_INFO.bank}</span>
-                    </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
-              <Alert className="border-green-600 bg-green-50">
-                <MessageCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="space-y-3">
-                  <p className="font-semibold uppercase text-sm">ENVÍA EL COMPROBANTE</p>
-                  <p className="text-xs uppercase leading-relaxed">
-                    UNA VEZ REALIZADA LA TRANSFERENCIA, ENVÍA EL COMPROBANTE POR WHATSAPP JUNTO CON TU NÚMERO DE PEDIDO.
-                  </p>
-                  <Link href={whatsappLink} target="_blank">
-                    <Button className="w-full bg-green-600 hover:bg-green-700 text-white uppercase">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      ENVIAR COMPROBANTE POR WHATSAPP
-                    </Button>
-                  </Link>
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
+          <div className="mb-6">
+            <SecureBankTransferDetails
+              mode="success"
+              whatsappLink={whatsappLink}
+              orderReference={orderId.slice(0, 8)}
+            />
+          </div>
         )}
 
         {isCash && (

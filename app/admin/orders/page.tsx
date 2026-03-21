@@ -41,7 +41,7 @@ interface Order {
   payment_method: string;
   tracking_number: string | null;
   created_at: string;
-  profiles: { full_name: string | null; id: string } | null;
+  profiles: { full_name: string | null; phone: string | null; id: string } | null;
 }
 
 interface OrderItem {
@@ -54,15 +54,22 @@ interface OrderItem {
 }
 
 type BaseOrderRow = Omit<Order, "profiles">;
-type ProfileRow = { id: string; full_name: string | null };
+type ProfileRow = { id: string; full_name: string | null; phone: string | null };
+
+interface CustomerContact {
+  phone: string | null;
+  email: string | null;
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrderContact, setSelectedOrderContact] = useState<CustomerContact | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [loadingContact, setLoadingContact] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(false);
   const [trackingError, setTrackingError] = useState("");
@@ -109,16 +116,20 @@ export default function OrdersPage() {
       const userIds = [...new Set(data.map(order => order.user_id))];
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, phone")
         .in("id", userIds);
 
-      const profilesMap = new Map((profilesData as ProfileRow[] | null)?.map((profile) => [profile.id, profile.full_name]) ?? []);
+      const profilesMap = new Map((profilesData as ProfileRow[] | null)?.map((profile) => [profile.id, profile]) ?? []);
       
       // Merge profiles into orders
       const ordersWithProfiles = (data as BaseOrderRow[]).map((order) => ({
         ...order,
         profiles: profilesMap.has(order.user_id)
-          ? { id: order.user_id, full_name: profilesMap.get(order.user_id) ?? null }
+          ? {
+            id: order.user_id,
+            full_name: profilesMap.get(order.user_id)?.full_name ?? null,
+            phone: profilesMap.get(order.user_id)?.phone ?? null,
+          }
           : null,
       }));
 
@@ -137,9 +148,43 @@ export default function OrdersPage() {
     if (data) setOrderItems(data);
   };
 
+  const fetchOrderContact = async (orderId: string) => {
+    setLoadingContact(true);
+
+    try {
+      const res = await fetch("/api/admin/orders/customer-contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        setSelectedOrderContact(null);
+        toast.error(result?.error || "NO SE PUDO OBTENER CONTACTO DEL CLIENTE");
+        return;
+      }
+
+      setSelectedOrderContact({
+        phone: result?.contact?.phone ?? null,
+        email: result?.contact?.email ?? null,
+      });
+    } catch {
+      setSelectedOrderContact(null);
+      toast.error("ERROR AL OBTENER CONTACTO DEL CLIENTE");
+    } finally {
+      setLoadingContact(false);
+    }
+  };
+
   const handleViewOrder = async (order: Order) => {
     setSelectedOrder(order);
-    await fetchOrderItems(order.id);
+    setSelectedOrderContact({
+      phone: order.profiles?.phone ?? null,
+      email: null,
+    });
+    await Promise.all([fetchOrderItems(order.id), fetchOrderContact(order.id)]);
     setDialogOpen(true);
   };
 
@@ -346,6 +391,14 @@ export default function OrdersPage() {
                 <p className="text-xs uppercase">
                   <span className="text-muted-foreground">Name:</span>{" "}
                   {selectedOrder.profiles?.full_name || "Unknown"}
+                </p>
+                <p className="text-xs uppercase">
+                  <span className="text-muted-foreground">Phone:</span>{" "}
+                  {selectedOrderContact?.phone || "N/A"}
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground uppercase">Email:</span>{" "}
+                  {loadingContact ? "CARGANDO..." : (selectedOrderContact?.email || "N/A")}
                 </p>
                 <p className="text-xs">
                   <span className="text-muted-foreground uppercase">Shipping Address:</span>{" "}

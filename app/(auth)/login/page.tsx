@@ -16,11 +16,21 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showConfirmed, setShowConfirmed] = useState(false);
+  const [showResetSuccess, setShowResetSuccess] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
       setShowSuccess(true);
+    }
+
+    if (searchParams.get("confirmed") === "true") {
+      setShowConfirmed(true);
+    }
+
+    if (searchParams.get("reset") === "success") {
+      setShowResetSuccess(true);
     }
   }, [searchParams]);
 
@@ -46,7 +56,11 @@ function LoginContent() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setError("TENÉS QUE CONFIRMAR TU EMAIL ANTES DE INICIAR SESIÓN");
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
     } else {
       const redirectPath = searchParams.get("redirect") || "/";
@@ -84,6 +98,24 @@ function LoginContent() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-xs text-green-800 uppercase">
               ¡Registro exitoso! Revisá tu email para confirmar tu cuenta.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {showConfirmed && (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-xs text-green-800 uppercase">
+              ¡Email confirmado! Ya podés iniciar sesión.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {showResetSuccess && (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-xs text-green-800 uppercase">
+              Contraseña actualizada correctamente.
             </AlertDescription>
           </Alert>
         )}
@@ -160,6 +192,12 @@ function LoginContent() {
           >
             {loading ? "Cargando..." : "Ingresar"}
           </Button>
+
+          <div className="text-center text-xs">
+            <Link href="/forgot-password" className="underline font-medium uppercase">
+              Olvidé mi contraseña
+            </Link>
+          </div>
 
           <div className="text-center text-xs">
             <span className="text-muted-foreground uppercase">¿No tenés cuenta? </span>
